@@ -33,6 +33,48 @@
     { "flow": ["delhi se mumbai train kal", "1"], "expectPending": true, "expectTicket": false },
     { "flow": ["delhi se mumbai train kal", "1", "haan"], "expectTicket": true },
     { "flow": ["delhi se mumbai flight kal", "1"], "expectPending": true, "expectTicket": false },
-    { "flow": ["delhi se mumbai flight kal", "1", "haan", "cancel karo", "haan"], "expectCancelled": true }
+    { "flow": ["delhi se mumbai flight kal", "1", "haan", "cancel karo", "haan"], "expectCancelled": true },
+    { "flow": ["दिल्ली से जयपुर बस", "दूसरा", "हाँ"], "expectTicket": true }
+  ],
+  "hindi": [
+    {"flow":["कल सुबह दिल्ली से मुंबई की फ्लाइट 5000 के अंदर"],"vertical":"flight"},
+    {"flow":["मुंबई से दिल्ली फ्लाइट"],"vertical":"flight"},
+    {"flow":["दिल्ली से जयपुर बस"],"vertical":"bus"},
+    {"flow":["दिल्ली से लखनऊ की बस 1,000 के अंदर"],"vertical":"bus"},
+    {"flow":["गोवा में होटल"],"vertical":"hotel"},
+    {"flow":["परसों दिल्ली से मुंबई ट्रेन"],"vertical":"train"},
+    {"flow":["जयपुर में होटल 2000 तक","दिल्ली से मुंबई फ्लाइट"],"vertical":"flight"}
+  ],
+  "conversation": [
+    {"flow":["कल दिल्ली से मुंबई ट्रेन","फ्लाइट दिखाओ"],"expect":{"agent":"flight","cards":true,"from":"delhi","to":"mumbai"}},
+    {"flow":["Delhi se Mumbai flight kal","parso ka"],"expect":{"agent":"flight","cards":true,"date":"2026-11-13"}},
+    {"flow":["मुझे कल मुंबई जाना है"],"expect":{"agent":"orchestrator","cards":true,"from":"delhi","to":"mumbai","date":"2026-11-12","replyHas":"फ्लाइट"}},
+    {"flow":["मुझे कल मुंबई जाना है","फ्लाइट"],"expect":{"agent":"flight","cards":true,"from":"delhi"}},
+    {"flow":["flight chahiye"],"expect":{"asked":"to","chips":true}},
+    {"flow":["flight chahiye","गोवा"],"expect":{"agent":"flight","cards":true,"to":"goa"}},
+    {"flow":["Delhi se Mumbai flight kal","sabse sasta"],"expect":{"pending":true}},
+    {"flow":["Delhi se Mumbai flight kal","1","nahi"],"expect":{"pending":false,"intent":"decline"}},
+    {"flow":["नमस्ते"],"expect":{"intent":"greet","chips":true,"replyHas":"नमस्ते"}},
+    {"flow":["Delhi se Mumbai flight kal","1","haan","होटल भी"],"expect":{"agent":"hotel","cards":true,"to":"mumbai"}},
+    {"flow":["Delhi se Mumbai flight kal","wapsi ka"],"expect":{"agent":"flight","cards":true,"from":"mumbai","to":"delhi"}},
+    {"flow":["Pune se Goa bus"],"expect":{"cards":false,"chips":true,"agent":"bus"}},
+    {"flow":["Delhi se Lucknow flight"],"expect":{"cards":false,"chips":true,"replyHas":"बसें"}},
+    {"flow":["जयपुर में होटल 1000 तक"],"expect":{"cards":true,"replyHas":"सबसे सस्ते"}},
+    {"flow":["Delhi se Mumbai flight kal","1","haan","change karna hai","parso"],"expect":{"agent":"flight","cards":true,"date":"2026-11-13"}},
+    {"flow":["Delhi to Mumbai flight tomorrow"],"lang":"en","expect":{"cards":true,"replyHas":"Found 3 flights from Delhi to Mumbai"}},
+    {"flow":["mujhe kal mumbai jaana hai","sabse sasta"],"expect":{"pending":true,"agent":"train"}},
+    {"flow":["pnr status"],"expect":{"agent":"post","chips":true}}
+  ],
+  "speech": [
+    {"reply":"Best delhi to mumbai options for 2026-11-12:","expect":"Best delhi to mumbai options for 12 November"},
+    {"reply":"IndiGo 6E-2134, DEL 06:00 -> BOM 08:10 · 2h 10m · nonstop. Traveller: Naman Goyal, Rs 4350, zero convenience fee. Confirm booking? (Rs 99 free-cancellation cover available)","expect":"IndiGo 6E 2134, D E L 6 AM to B O M 8 10 AM, 2 hours 10 minutes, nonstop. Traveller, Naman Goyal, 4350 rupees, zero convenience fee. Confirm booking? 99 rupees free cancellation cover available"},
+    {"reply":"PNR HJWHES: CNF (mock). 12951 Mumbai Rajdhani · NDLS 16:25 -> MMCT 08:15 · 15h 50m · 2026-11-12 · Naman Goyal","expect":"P N R H J W H E S, confirmed, mock. 12951 Mumbai Rajdhani, N D L S 4 25 PM to M M C T 8 15 AM, 15 hours 50 minutes, 12 November, Naman Goyal"},
+    {"reply":"Cancel 12951 Mumbai Rajdhani (PNR HJWHES, Rs 2745)? Say \"haan\" to confirm cancellation.","expect":"Cancel 12951 Mumbai Rajdhani, P N R H J W H E S, 2745 rupees? Say haan to confirm cancellation."},
+    {"reply":"Haveli Budget Rooms (2 star), Old City · rated 3.8. Guest: Naman Goyal, Rs 1150/night. Confirm booking?","expect":"Haveli Budget Rooms, 2 star, Old City, rated 3.8. Guest, Naman Goyal, 1150 rupees per night. Confirm booking?"},
+    {"reply":"A Travel Pass priced at Rs 249 provides additional savings and benefits on Paytm Checkin.\n\nSource: Travel Pass","expect":"A Travel Pass priced at 249 rupees provides additional savings and benefits on Paytm Checkin."},
+    {"lang":"hi","reply":"IndiGo 6E 2134, कल (12 नवंबर) सुबह 6:10, ₹4,350, कोई कन्वीनियंस फीस नहीं। यात्री: Naman Goyal। बुक कर दूँ?","expect":"IndiGo 6E 2134, कल, 12 नवंबर, सुबह 6 बजकर 10 मिनट, 4350 रुपये, कोई कन्वीनियंस फीस नहीं। यात्री, Naman Goyal। बुक कर दूँ?"},
+    {"lang":"hi","reply":"बुक हो गया। 12951 Mumbai Rajdhani, PNR HJWHES। ₹2,745 UPI से भुगतान हुआ (डेमो)।","expect":"बुक हो गया। 12951 Mumbai Rajdhani, P N R H J W H E S। 2745 रुपये U P I से भुगतान हुआ, डेमो।"},
+    {"lang":"en","reply":"IndiGo 6E 2134, tomorrow (12 Nov) at 6:10 AM, ₹4,350, zero convenience fee. Traveller: Naman Goyal. Shall I book it?","expect":"IndiGo 6E 2134, tomorrow, 12 Nov, at 6 10 AM, 4350 rupees, zero convenience fee. Traveller, Naman Goyal. Shall I book it?"},
+    {"lang":"en","reply":"Pick an option first, tap a card or say “first”.","expect":"Pick an option first, tap a card or say first."}
   ]
 }

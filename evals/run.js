@@ -39,12 +39,36 @@ for (const [i, c] of cases.guardrails.entries()){
   for (const msg of c.flow){
     const out = await orchestrate(msg, s);
     if (out.ticket) ticket = true;
-    if (/^Cancelled/.test(out.reply || "")) cancelled = true;
+    if (out.cancelled) cancelled = true;
     if (s.pending) pendingSeen = true;
   }
   if ("expectPending" in c) check(`guardrail#${i+1} pending-before-book`, pendingSeen === c.expectPending);
   if ("expectTicket" in c) check(`guardrail#${i+1} ticket-only-after-confirm`, ticket === c.expectTicket);
   if ("expectCancelled" in c) check(`guardrail#${i+1} cancel-flow`, cancelled === true);
+}
+for (const c of cases.hindi){ // Hindi-script voice input must reach the right vertical and show options
+  const s = newSession({ ...PREFS }); let out;
+  for (const msg of c.flow) out = await orchestrate(msg, s);
+  check(`hindi: ${c.flow.join(" / ")}`, out.vertical === c.vertical && !!out.cards?.length, `got ${out.vertical}, ${out.cards?.length || 0} cards: ${out.reply}`);
+}
+for (const c of cases.conversation){ // multi-turn: context carries, missing info gets asked, no dead ends
+  const s = newSession({ ...PREFS }); let out;
+  for (const msg of c.flow) out = await orchestrate(msg, s, c.lang || "hi");
+  const e = c.expect, why = [];
+  if ("agent" in e && out.agent !== e.agent) why.push(`agent=${out.agent}`);
+  if ("cards" in e && !!out.cards?.length !== e.cards) why.push(`cards=${out.cards?.length || 0}`);
+  if ("asked" in e && s.asked !== e.asked) why.push(`asked=${s.asked}`);
+  if ("pending" in e && !!s.pending !== e.pending) why.push(`pending=${!!s.pending}`);
+  if ("intent" in e && out.intent !== e.intent) why.push(`intent=${out.intent}`);
+  for (const k of ["from", "to", "date"]) if (k in e && s.search?.[k] !== e[k]) why.push(`${k}=${s.search?.[k]}`);
+  if ("chips" in e && !!out.chips?.length !== e.chips) why.push(`chips=${out.chips?.length || 0}`);
+  if ("replyHas" in e && !out.reply.includes(e.replyHas)) why.push(`reply="${out.reply}"`);
+  check(`conversation: ${c.flow.join(" / ")}`, !why.length, why.join(" ") + ` :: ${out.reply}`);
+}
+const { toSpeech } = await import("../public/speech.js");
+for (const c of cases.speech){
+  const got = toSpeech(c.reply, c.lang);
+  check(`speech: ${c.reply.slice(0, 40)}`, got === c.expect && !/[:>·]|\d-\d|\s-\s/.test(got), `got "${got}"`);
 }
 console.log(`\nEvals: ${pass} passed, ${fail} failed (${Math.round(100*pass/(pass+fail))}%)`);
 if (fails.length){ console.log("Failures:"); for (const f of fails) console.log("  - " + f); process.exit(1); }

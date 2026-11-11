@@ -1,29 +1,26 @@
-// Post-booking specialist: PNR status, cancel (with refund note from KB policies), change date.
-// GUARDRAIL: cancel/change need an explicit confirm, and only touch session bookings (mock).
-import { norm } from "./shared.js";
+// Post-booking specialist: PNR status, cancel, change date.
+// GUARDRAIL: cancel needs an explicit confirm after a read-back, and only touches this session's bookings (mock).
 import { tools } from "../tools.js";
 
-export async function postBookingAgent(message, session){
-  const m = norm(message);
+export function postBookingAgent(turn, session, t){
   const last = session.bookings[session.bookings.length - 1];
-  if (!last) return { reply: "No bookings in this session yet - book something first, then I can show status, change or cancel it." };
-  if (session.pendingCancel){
-    if (/^(haan|ha|yes|confirm|theek hai|ok)\b/.test(m)){
-      const r = tools.cancel_booking(session.pendingCancel);
-      session.bookings = session.bookings.filter(b => b.pnr !== r.pnr);
-      session.pendingCancel = null;
-      return { reply: `Cancelled ${r.pnr}. ${r.refundNote}` };
-    }
-    session.pendingCancel = null;
-    return { reply: "Cancellation dropped. Booking stays as is." };
-  }
-  if (/cancel|refund/.test(m)){
+  if (!last) return { reply: t.noBookings(), chips: t.starters() };
+  if (turn.intent === "cancel"){
     session.pendingCancel = last;
-    return { reply: `Cancel ${last.title} (PNR ${last.pnr}, Rs ${last.fare})? Say "haan" to confirm cancellation.` };
+    return { reply: t.askCancel(last), chips: t.cancelChips(), ticket: last };
   }
-  if (/change|reschedule|modify/.test(m)){
-    return { reply: `Change for ${last.title} (PNR ${last.pnr}): tell me the new date and I'll re-check options - changes are mocked in this demo.` };
+  if (turn.intent === "change"){
+    session.search = { ...last.search }; // the trip comes back; the next date the user says re-runs the search
+    session.asked = "date";
+    return { reply: t.askNewDate(last), chips: t.dateChips(last.date) };
   }
-  const st = tools.pnr_status(last);
-  return { reply: `PNR ${st.pnr}: ${st.status}. ${st.detail}` };
+  return { reply: t.status(last), ticket: last, chips: t.afterBooking(last) };
+}
+
+export function confirmCancel(session, t){
+  const b = session.pendingCancel;
+  session.pendingCancel = null;
+  tools.cancel_booking(b);
+  session.bookings = session.bookings.filter(x => x.pnr !== b.pnr);
+  return { reply: t.cancelled(b), cancelled: b.pnr, chips: t.starters() };
 }

@@ -14,11 +14,12 @@ export async function savePrefs(prefs){
   try { await writeFile(FILE, JSON.stringify(prefs, null, 2)); } catch(e){}
 }
 export function newSession(prefs){
-  return { prefs, vertical: null, lastOptions: null, search: null, selected: null, pending: null, bookings: [], turns: 0 };
+  // search = the trip so far; asked = the slot we last asked for ("to", "vertical", "date").
+  return { prefs, search: null, lastOptions: null, pending: null, pendingCancel: null, asked: null, bookings: [], turns: 0 };
 }
 export function learnPrefs(session, nlu){
-  // Update persistent prefs from observed choices.
-  if (nlu.budget) session.prefs.budget = nlu.budget;
+  // Update persistent prefs from observed choices. Budget is per trip, not a lasting preference:
+  // a remembered hotel budget used to hide every flight.
   if (nlu.cls) session.prefs.preferredClass = nlu.cls;
   return session.prefs;
 }

@@ -34,9 +34,10 @@ export const tools = {
       .filter(o => !budget || o.price <= budget).sort((a,b) => a.price - b.price).slice(0,3);
   },
   book(option, prefs, date){
-    const pnr = Array.from({length:6}, () => "ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.floor(Math.random()*32)]).join("");
+    const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // 31 chars: random()*32 used to index past the end, giving 5-char PNRs
+    const pnr = Array.from({ length: 6 }, () => A[Math.floor(Math.random() * A.length)]).join("");
     return { pnr, kind: option.kind, title: option.title, sub: option.sub, date, passenger: prefs.name,
-      fare: option.price, payment: "UPI - mock success", status: option.kind === "hotel" ? "Confirmed (mock)" : "CNF (mock)" };
+      fare: option.price, raw: option.raw, payment: "UPI - mock success", status: option.kind === "hotel" ? "Confirmed (mock)" : "CNF (mock)" };
   },
   pnr_status(booking){
     return { pnr: booking.pnr, status: "CNF (mock)", detail: `${booking.title} · ${booking.sub} · ${booking.date} · ${booking.passenger}` };
