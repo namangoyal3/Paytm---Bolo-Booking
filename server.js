@@ -7,12 +7,12 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, sep } from "node:path";
 import { orchestrate } from "./src/orchestrator.js";
-import { loadPrefs, newSession } from "./src/memory.js";
+import { loadPrefs, savePrefs, newSession } from "./src/memory.js";
+import { MAX_BODY, parseChat, chatResponse, chatError } from "./src/api.js";
 
 const PORT = process.env.PORT || 8787;
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = resolve(ROOT, "public");
-const MAX_BODY = 8 * 1024;
 const sessions = new Map(); // ponytail: in-memory and unbounded; fine for a local demo, add expiry before hosting it
 const PREFS = await loadPrefs();
 
@@ -24,21 +24,17 @@ function send(res, status, body){
 async function handleChat(req, res){
   let body = "";
   for await (const c of req){ body += c; if (body.length > MAX_BODY) return send(res, 413, { error: "Message too long" }); }
-  let input;
-  try { input = JSON.parse(body || "{}"); } catch(e){ return send(res, 400, { error: "Invalid JSON" }); }
-  const message = String(input.message || "").slice(0, 500).trim();
-  const sid = String(input.sessionId || "default").slice(0, 64);
-  const lang = input.lang === "en" ? "en" : "hi";
-  if (!message) return send(res, 400, { error: "Empty message" });
+  const { message, sid, lang, status, error } = parseChat(body);
+  if (error) return send(res, status, { error });
   if (!sessions.has(sid)) sessions.set(sid, newSession({ ...PREFS }));
+  const session = sessions.get(sid);
   try {
-    const out = await orchestrate(message, sessions.get(sid), lang);
-    send(res, 200, { reply: out.reply || "", cards: out.cards || null, ticket: out.ticket || null, chips: out.chips || [],
-      trip: out.trip || null, agent: out.agent, selected: out.selected ?? null, retrieved: out.retrieved || null, source: out.source || null,
-      engine: out.engine, intent: out.intent, lang });
+    const out = await orchestrate(message, session, lang);
+    await savePrefs(session.prefs); // Node only: the Worker keeps prefs in memory
+    send(res, 200, chatResponse(out, lang));
   } catch(e){
     console.error("chat failed:", e);
-    send(res, 500, { error: lang === "en" ? "Something went wrong. Please try again." : "कुछ गड़बड़ हो गई। फिर से कोशिश कीजिए।" });
+    send(res, 500, chatError(lang));
   }
 }
 

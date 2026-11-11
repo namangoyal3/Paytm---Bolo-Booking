@@ -93,3 +93,16 @@ Current score (offline mode, `LLM_PROVIDER=none node evals/run.js`): **66/66**.
 ## Stack
 
 Plain Node.js (no dependencies), vanilla HTML/CSS/JS frontend (ES modules), browser Web Speech API for voice in and out, Claude CLI for understanding and policy answers.
+
+## Live demo (Cloudflare Workers)
+
+Deployed free tier: <https://bolo-booking.namangoyal.workers.dev>
+
+Cloud deploy notes (honest differences from local):
+
+- `src/worker.js` is the Workers entry. It uses the same orchestrator, agents and `/api/chat` contract (`src/api.js`) as `server.js`.
+- Cloud runs `LLM_PROVIDER=none` (offline keyword parser). The Claude CLI path is local-only.
+- Memory is in-memory per session on Workers (no persistence). Locally, prefs persist to `memory.json`.
+- Static UI is served via Workers Static Assets from `public/`.
+
+Redeploy: `npx wrangler deploy` (needs `CLOUDFLARE_API_TOKEN` + `account_id` in `wrangler.toml`).

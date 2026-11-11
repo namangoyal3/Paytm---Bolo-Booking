@@ -9,7 +9,7 @@ import { postBookingAgent, confirmCancel } from "./agents/postBookingAgent.js";
 import { policyAgent } from "./agents/policyAgent.js";
 import { tools } from "./tools.js";
 import { TODAY } from "./agents/shared.js";
-import { learnPrefs, savePrefs } from "./memory.js";
+import { learnPrefs } from "./memory-shared.js"; // no fs here: the Worker imports this module too
 
 // Merge what this turn says into the trip so far. Hotels use `to` as their city, so "hotel bhi" after a
 // Delhi -> Mumbai search finds Mumbai hotels, and "flight dikhao" after Goa hotels flies to Goa.
@@ -102,7 +102,6 @@ export async function orchestrate(message, session, lang = "hi"){
   const turn = await understand(message, session, lang);
   const out = await handle(turn, message, session, t, lang);
   learnPrefs(session, turn);
-  await savePrefs(session.prefs);
   return { chips: [], ...out, trip: t.trip(session.search), vertical: out.agent, intent: turn.intent, engine: turn.engine, nlu: turn };
 }
 
