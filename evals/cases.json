@@ -1,0 +1,38 @@
+{
+  "routing": [
+    { "msg": "delhi se mumbai train kal", "expect": "train" },
+    { "msg": "mumbai rajdhani book karna hai", "expect": "train" },
+    { "msg": "delhi se mumbai flight under 5000", "expect": "flight" },
+    { "msg": "flight cancel karni hai", "expect": "post" },
+    { "msg": "delhi jaipur bus kal subah", "expect": "bus" },
+    { "msg": "volvo sleeper lucknow", "expect": "bus" },
+    { "msg": "mumbai mein hotel chahiye 4000 ke andar", "expect": "hotel" },
+    { "msg": "goa resort book karo", "expect": "hotel" },
+    { "msg": "mera pnr status batao", "expect": "post" },
+    { "msg": "refund kab milega", "expect": "post" },
+    { "msg": "convenience fee kitna hai", "expect": "policy" },
+    { "msg": "travel pass kya hai", "expect": "policy" },
+    { "msg": "what is ticket assure", "expect": "policy" }
+  ],
+  "slots": [
+    { "msg": "kal delhi se mumbai 5000 ke andar", "from": "delhi", "to": "mumbai", "budget": 5000, "date": "2026-11-12" },
+    { "msg": "tomorrow delhi to goa under 6000", "from": "delhi", "to": "goa", "budget": 6000, "date": "2026-11-12" },
+    { "msg": "jaipur bus under 600", "from": "jaipur", "budget": 600 },
+    { "msg": "mumbai mein hotel 4000 ke andar", "city": "mumbai", "budget": 4000 },
+    { "msg": "3A mein delhi se bangalore train", "from": "delhi", "to": "bangalore", "cls": "3A" }
+  ],
+  "policy": [
+    { "q": "convenience fee kitni hai", "doc": "kb-zero-fee", "token": "zero" },
+    { "q": "flight cancellation free hai kya", "doc": "kb-flight-cancel", "token": "99" },
+    { "q": "travel pass price", "doc": "kb-travel-pass", "token": "249" },
+    { "q": "bus refund guarantee", "doc": "kb-assured-bus", "token": "refund" },
+    { "q": "train ticket confirm hoga kya help", "doc": "kb-pnr-prediction", "token": "confirmed" },
+    { "q": "hotels kahan se aate hain", "doc": "kb-hotels-agoda", "token": "Agoda" }
+  ],
+  "guardrails": [
+    { "flow": ["delhi se mumbai train kal", "1"], "expectPending": true, "expectTicket": false },
+    { "flow": ["delhi se mumbai train kal", "1", "haan"], "expectTicket": true },
+    { "flow": ["delhi se mumbai flight kal", "1"], "expectPending": true, "expectTicket": false },
+    { "flow": ["delhi se mumbai flight kal", "1", "haan", "cancel karo", "haan"], "expectCancelled": true }
+  ]
+}

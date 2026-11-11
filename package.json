@@ -1,0 +1,7 @@
+{
+  "name": "bolo-booking",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "scripts": { "start": "node server.js", "evals": "node evals/run.js" }
+}
