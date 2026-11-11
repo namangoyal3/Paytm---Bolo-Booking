@@ -174,28 +174,74 @@ function setListening(on){
   mic.firstElementChild.className = on ? "ph-fill ph-stop" : "ph-fill ph-microphone";
   hint.textContent = on ? S().hintListening : S().hintIdle;
 }
+// One tap = one "listen turn". Chrome's single-phrase mode ends at the first short pause (and after a few
+// silent seconds), which cut Hindi sentences off mid-way. So recognition runs continuous, this code decides
+// when the user is done (a pause after speech), and if Chrome ends recognition on its own (network blip,
+// its own timeouts) the turn restarts it instead of stopping.
+const SILENCE_AFTER_FINAL_MS = 2000, SILENCE_AFTER_INTERIM_MS = 3000, NO_SPEECH_MS = 9000, MAX_LISTEN_MS = 30000;
+let turn = null;
+const ERROR_HINT = () => ({ "not-allowed": S().hintMicDenied, "service-not-allowed": S().hintMicDenied,
+  "audio-capture": S().hintNoMic, network: S().hintNetwork });
+
 function listen(){
   if (!SR || state.busy || state.listening) return;
   stopSpeaking();
-  rec = new SR();
-  rec.lang = S().speech; rec.interimResults = true; rec.continuous = false; rec.maxAlternatives = 1;
-  let heard = "", final = false, error = null;
+  const t = turn = { text: "", session: "", stop: false, error: null, timer: 0, cap: 0, started: Date.now() };
   $("heard").textContent = "";
-  rec.onresult = e => {
-    heard = [...e.results].map(r => r[0].transcript).join("");
-    final = e.results[e.results.length - 1].isFinal;
-    $("heard").textContent = heard;
+  setListening(true);
+  t.timer = setTimeout(stopListening, NO_SPEECH_MS);
+  t.cap = setTimeout(stopListening, MAX_LISTEN_MS);
+  startRecognition(t);
+}
+
+function startRecognition(t){
+  const r = rec = new SR();
+  r.lang = S().speech; r.interimResults = true; r.continuous = true; r.maxAlternatives = 1;
+  r.onresult = e => {
+    if (t !== turn) return;
+    let fin = "", live = "";
+    for (const x of e.results) x.isFinal ? fin += x[0].transcript : live += x[0].transcript;
+    t.session = fin + live;
+    $("heard").textContent = `${t.text} ${t.session}`.trim();
+    clearTimeout(t.timer);
+    t.timer = setTimeout(stopListening, live.trim() ? SILENCE_AFTER_INTERIM_MS : SILENCE_AFTER_FINAL_MS);
   };
-  rec.onerror = e => { error = e.error; };
-  rec.onend = () => {
-    rec = null; setListening(false);
-    if (heard.trim() && (final || !error)) return send(heard, heard, true); // tapping stop sends what was heard
-    state.handsFree = false;
-    hint.textContent = { "not-allowed": S().hintMicDenied, "service-not-allowed": S().hintMicDenied, "audio-capture": S().hintNoMic,
-      network: S().hintNetwork }[error] || S().hintNoSpeech;
+  r.onerror = e => { if (!["no-speech", "aborted"].includes(e.error)) t.error = e.error; };
+  r.onend = () => {
+    if (rec === r) rec = null;
+    if (t !== turn) return; // cancelled (language switch)
+    t.text = `${t.text} ${t.session}`.trim(); t.session = "";
+    if (!t.stop && !t.error){ // Chrome stopped by itself: keep listening
+      try { return startRecognition(t); } catch { /* fall through and finish */ }
+    }
+    finishListening(t);
   };
-  try { rec.start(); setListening(true); }
-  catch (e){ rec = null; state.handsFree = false; hint.textContent = `${S().hintMicFailed} (${e.name})`; }
+  try { r.start(); }
+  catch (e){ t.error = t.error || e.name; if (rec === r) rec = null; finishListening(t); }
+}
+
+function stopListening(){ // the user tapped stop, paused after speaking, or a time limit passed
+  const t = turn;
+  if (!t || t.stop) return;
+  t.stop = true; clearTimeout(t.timer);
+  if (rec) rec.stop(); else finishListening(t);
+}
+
+function finishListening(t){
+  if (t !== turn) return;
+  turn = null; clearTimeout(t.timer); clearTimeout(t.cap);
+  setListening(false);
+  if (t.text) return send(t.text, t.text, true);
+  state.handsFree = false;
+  hint.textContent = ERROR_HINT()[t.error] || (t.error ? `${S().hintMicFailed} (${t.error})` : S().hintNoSpeech);
+}
+
+function cancelListening(){ // drop what was heard (language switch)
+  const t = turn;
+  if (!t) return;
+  turn = null; clearTimeout(t.timer); clearTimeout(t.cap);
+  const r = rec; rec = null; r?.abort();
+  setListening(false);
 }
 
 // ---------- controls ----------
@@ -223,7 +269,7 @@ function applyLang(){
 }
 
 document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click", () => {
-  if (state.listening) rec?.abort();
+  cancelListening();
   state.lang = b.dataset.lang; store.set("bolo-lang", state.lang); applyLang();
 }));
 document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
@@ -237,7 +283,7 @@ $("voiceToggle").addEventListener("click", () => {
   applyLang();
 });
 mic.addEventListener("click", () => {
-  if (state.listening) return rec?.stop();
+  if (state.listening) return stopListening();
   state.handsFree = state.voice; listen();
 });
 input.addEventListener("input", sync);
