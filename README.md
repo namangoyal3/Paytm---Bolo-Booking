@@ -54,7 +54,7 @@ node server.js
 
 Requires **Node 18+** and Chrome (for voice). Install the [Claude CLI](https://docs.claude.com/en/docs/claude-code) and log in. The app runs `claude -p --model haiku` under your own login, so it needs no API key. It keeps one pre-booted Claude process ready for each prompt, so a turn takes about 1.5 to 2 s instead of a cold start. Zero npm dependencies.
 
-The UI loads the Anek Devanagari and Geist Mono fonts and the Phosphor icons from public CDNs. Without network access, the app uses system fonts and shows no icons.
+The UI follows the Paytm Travel app look: mode tabs, a From/To search card, white result cards. It loads the Inter and Noto Sans Devanagari fonts and the Phosphor icons from public CDNs. Without network access, the app uses system fonts and shows no icons.
 
 | Mode | Command |
 | --- | --- |

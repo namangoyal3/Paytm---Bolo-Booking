@@ -12,7 +12,7 @@ const REQUEST_TIMEOUT_MS = 60000; // server gives Claude 45 s before falling bac
 const TRACE_MAX = 6;
 const sessionId = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
 const state = { lang: store.get("bolo-lang") === "en" ? "en" : "hi", voice: store.get("bolo-voice") !== "off",
-  busy: false, listening: false, handsFree: false, options: null };
+  busy: false, listening: false, handsFree: false, options: null, trip: null };
 const S = () => STR[state.lang];
 const log = $("log"), input = $("text"), mic = $("mic"), hint = $("hint");
 
@@ -31,11 +31,19 @@ function setChips(chips){
     el("button", { type: "button", class: "chip", onclick: () => send(c.text, c.label) }, c.label)));
 }
 
+// The Paytm-style search card mirrors what the assistant understood; the mode tabs mirror the vertical.
 function setTrip(trip){
+  state.trip = trip;
+  document.querySelectorAll("[data-mode]").forEach(b => b.setAttribute("aria-current", String(!!trip && b.dataset.mode === trip.mode)));
   $("trip").hidden = !trip;
   if (!trip) return;
-  $("tripRoute").textContent = trip.route || "…";
+  const hotel = trip.mode === "hotel";
+  $("fromLabel").textContent = hotel ? S().city : S().from;
+  const fill = (id, v) => { $(id).textContent = v || S().choose; $(id).classList.toggle("empty", !v); };
+  fill("tripFrom", hotel ? trip.to : trip.from); fill("tripTo", trip.to);
+  $("toField").hidden = hotel; $("swap").hidden = hotel || !trip.from || !trip.to;
   $("tripDate").textContent = trip.date;
+  $("tripModeWrap").hidden = hotel;
   $("tripModeIcon").className = `ph ph-${AGENT_ICON[trip.mode] || "path"}`;
   $("tripMode").textContent = trip.modeLabel;
   $("tripBudgetWrap").hidden = !trip.budget;
@@ -53,16 +61,16 @@ function pushTrace(agent, engine, ms){
 function renderBot(d, ms){
   const replay = el("button", { type: "button", class: "replay", "aria-label": S().replay, title: S().replay }, icon("speaker-simple-high"));
   replay.addEventListener("click", () => speak(d.reply, replay, false));
-  const turn = el("article", { class: "turn bot" },
-    who(d.agent, took(d.engine, ms)),
+  const card = el("div", { class: "bot-card" }, who(d.agent, took(d.engine, ms)),
     el("div", { class: "say-row" }, el("p", { class: "say", text: d.reply }), d.reply ? replay : null));
+  const turn = el("article", { class: "turn bot" }, card);
   if (d.cards?.length){
     state.options = renderOptions(d.cards, S(), i => send(String(i + 1), S().option(i + 1)));
     turn.append(state.options);
   }
   if (d.ticket) turn.append(renderPass(d.ticket, S()));
   if (d.source && /^https?:\/\//.test(d.source.url || ""))
-    turn.append(el("a", { class: "source", href: d.source.url, target: "_blank", rel: "noopener noreferrer" }, icon("book-open-text"), `${S().source}: ${d.source.title}`));
+    card.append(el("a", { class: "source", href: d.source.url, target: "_blank", rel: "noopener noreferrer" }, icon("book-open-text"), `${S().source}: ${d.source.title}`));
   if (Number.isInteger(d.selected) && state.options){
     [...state.options.children].forEach((c, i) => { c.classList.toggle("is-selected", i === d.selected); c.classList.toggle("is-dim", i !== d.selected); });
   }
@@ -70,9 +78,9 @@ function renderBot(d, ms){
 }
 
 function renderError(message, retry){
-  return el("article", { class: "turn bot error", role: "alert" }, who("orchestrator"),
+  return el("article", { class: "turn bot error", role: "alert" }, el("div", { class: "bot-card" }, who("orchestrator"),
     el("div", { class: "say-row" }, icon("warning-circle"), el("p", { class: "say", text: message })),
-    el("button", { type: "button", class: "retry", onclick: retry }, icon("arrow-clockwise"), S().retry));
+    el("button", { type: "button", class: "retry", onclick: retry }, icon("arrow-clockwise"), S().retry)));
 }
 
 async function send(text, label = text, viaVoice = false){
@@ -82,7 +90,7 @@ async function send(text, label = text, viaVoice = false){
   state.handsFree = viaVoice && state.voice;
   add(el("div", { class: "turn user" }, el("p", { class: "bubble" }, viaVoice ? icon("microphone", true) : null, label)));
   setChips([]); input.value = "";
-  const pending = add(el("article", { class: "turn bot", "aria-busy": "true" }, who("orchestrator", S().thinking), el("div", { class: "skel" }, el("i"), el("i"))));
+  const pending = add(el("article", { class: "turn bot", "aria-busy": "true" }, el("div", { class: "bot-card" }, who("orchestrator", S().thinking), el("div", { class: "skel" }, el("i"), el("i")))));
   state.busy = true; sync();
   const t0 = performance.now();
   try {
@@ -117,20 +125,41 @@ function pickVoice(tag){ // Chrome's Google voice for the language if present, e
   const google = list => list.find(v => /Google/.test(v.name)) || list[0];
   return google(voices.filter(v => norm(v) === tag)) || google(voices.filter(v => norm(v).startsWith(tag.slice(0, 2)))) || null;
 }
-function stopSpeaking(){ speakSeq++; synth?.cancel(); document.querySelectorAll(".replay.on").forEach(b => b.classList.remove("on")); }
+// Chrome speech quirks this works around: online voices stop after ~15 s without an end event (so queue one
+// utterance per sentence); a garbage-collected utterance never fires its end event (so keep references);
+// speak() called inside a previous utterance's end handler sometimes never plays (so queue them all at once);
+// cancel() right before speak() can kill the new utterance (so cancel only when something is playing);
+// and sometimes no event arrives at all (so a watchdog finishes the turn).
+const TTS_MS_PER_CHAR = 110, TTS_GRACE_MS = 2500;
+let utterances = [];
+function stopSpeaking(){
+  speakSeq++; utterances = [];
+  if (synth && (synth.speaking || synth.pending)) synth.cancel();
+  document.querySelectorAll(".replay.on").forEach(b => b.classList.remove("on"));
+}
 function speak(text, btn, thenListen){
-  if (!synth){ if (thenListen && state.handsFree) listen(); return; }
   stopSpeaking();
-  const id = speakSeq, u = new SpeechSynthesisUtterance(toSpeech(text, state.lang));
-  u.lang = S().speech; const v = pickVoice(u.lang); if (v) u.voice = v;
-  const done = () => {
-    if (id !== speakSeq) return; // cancelled by a newer utterance or by barge-in
+  const id = speakSeq, voice = pickVoice(S().speech);
+  const parts = toSpeech(text, state.lang).split(/(?<=[।?!.])\s+/).filter(p => p.trim());
+  let watchdog = 0;
+  const finish = () => {
+    if (id !== speakSeq) return; // a newer reply or a barge-in took over
+    clearTimeout(watchdog); speakSeq++; utterances = [];
     btn?.classList.remove("on"); hint.textContent = S().hintIdle;
     if (thenListen && state.handsFree) listen();
   };
-  u.onend = done; u.onerror = done;
+  if (!synth || !parts.length) return finish();
+  let left = parts.length;
+  watchdog = setTimeout(finish, parts.join(" ").length * TTS_MS_PER_CHAR + TTS_GRACE_MS);
   btn?.classList.add("on"); hint.textContent = S().hintSpeaking;
-  synth.speak(u);
+  synth.resume(); // Chrome can leave the queue paused after the tab sat idle
+  utterances = parts.map(p => {
+    const u = new SpeechSynthesisUtterance(p);
+    u.lang = S().speech; if (voice) u.voice = voice;
+    u.onend = u.onerror = () => { if (--left === 0) finish(); };
+    return u;
+  });
+  utterances.forEach(u => synth.speak(u));
 }
 
 // ---------- voice in ----------
@@ -162,9 +191,11 @@ function listen(){
     rec = null; setListening(false);
     if (heard.trim() && (final || !error)) return send(heard, heard, true); // tapping stop sends what was heard
     state.handsFree = false;
-    hint.textContent = error === "not-allowed" || error === "service-not-allowed" ? S().hintMicDenied : S().hintNoSpeech;
+    hint.textContent = { "not-allowed": S().hintMicDenied, "service-not-allowed": S().hintMicDenied, "audio-capture": S().hintNoMic,
+      network: S().hintNetwork }[error] || S().hintNoSpeech;
   };
-  try { rec.start(); setListening(true); } catch { rec = null; }
+  try { rec.start(); setListening(true); }
+  catch (e){ rec = null; state.handsFree = false; hint.textContent = `${S().hintMicFailed} (${e.name})`; }
 }
 
 // ---------- controls ----------
@@ -180,6 +211,8 @@ function applyLang(){
   document.querySelector(".seg").setAttribute("aria-label", s.language);
   input.placeholder = s.placeholder; input.setAttribute("aria-label", s.placeholder);
   $("send").setAttribute("aria-label", s.send);
+  $("swap").setAttribute("aria-label", s.swap); $("swap").title = s.swap;
+  if (state.trip) setTrip(state.trip);
   $("heard").dataset.hint = s.listening;
   mic.setAttribute("aria-label", state.listening ? s.micStop : s.mic);
   const vt = $("voiceToggle");
@@ -193,6 +226,11 @@ document.querySelectorAll("[data-lang]").forEach(b => b.addEventListener("click"
   if (state.listening) rec?.abort();
   state.lang = b.dataset.lang; store.set("bolo-lang", state.lang); applyLang();
 }));
+document.querySelectorAll("[data-mode]").forEach(b => b.addEventListener("click", () => {
+  if (b.getAttribute("aria-current") === "true") return;
+  send(S().tabSend[b.dataset.mode], b.textContent.trim());
+}));
+$("swap").addEventListener("click", () => send(S().swapSend, S().swap));
 $("voiceToggle").addEventListener("click", () => {
   state.voice = !state.voice; store.set("bolo-voice", state.voice ? "on" : "off");
   if (!state.voice){ stopSpeaking(); state.handsFree = false; }

@@ -31,13 +31,13 @@ export function mergeTrip(prev, turn, prefs){
 function search(turn, session, t){
   const trip = mergeTrip(session.search, turn, session.prefs);
   session.search = trip; session.pending = null; session.asked = null;
+  if (trip.vertical !== "hotel") trip.from = trip.from || session.prefs.homeCity; // origin defaults to home city (memory); replies name it
   if (!trip.to){
     session.asked = "to";
     const chips = trip.vertical === "hotel" ? t.hotelCityChips() : t.placeChips(destinations(trip));
     return { agent: trip.vertical || "orchestrator", reply: t.askTo(trip), chips };
   }
   if (trip.vertical !== "hotel"){
-    trip.from = trip.from || session.prefs.homeCity; // origin defaults to home city (memory); the reply names it
     if (trip.from === trip.to){ session.asked = "to"; return { agent: trip.vertical || "orchestrator", reply: t.sameCity(trip), chips: t.placeChips(destinations(trip)) }; }
   }
   if (!trip.vertical){ // no mode named: compare them all instead of asking "train, flight ya bus?"

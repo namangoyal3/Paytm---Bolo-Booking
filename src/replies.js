@@ -114,6 +114,7 @@ export function replies(lang){
     // Labels for the trip bar the UI keeps on screen.
     trip: s => s && (s.to || s.vertical) ? {
       route: s.vertical === "hotel" ? (s.to ? place(s.to) : null) : [s.from, s.to].filter(Boolean).map(place).join(" → ") || null,
+      from: s.from ? place(s.from) : null, to: s.to ? place(s.to) : null,
       date: REL[L][daysFromToday(s.date)] ? `${REL[L][daysFromToday(s.date)].replace(/^./, c => c.toUpperCase())}, ${day(s.date)}` : day(s.date),
       mode: s.vertical || "all", modeLabel: s.vertical ? cap(NOUN[L][s.vertical][0]) : (hi ? "सभी साधन" : "All modes"),
       budget: s.budget ? (hi ? `${rupees(s.budget)} तक` : `Under ${rupees(s.budget)}`) : null

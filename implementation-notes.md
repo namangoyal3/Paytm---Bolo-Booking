@@ -43,3 +43,16 @@ Live build log. Deviations, edge cases and non-obvious decisions only.
   whole page scrolled sideways. Column is `minmax(0, 1fr)` now.
 - Scroll after chips/trip render, not before: they change the log's height and hid the newest reply.
 - Bookings now carry `raw` (the option's data) so the boarding pass can show times and station codes.
+- User report "mic flow is not working". Real-Chrome repro (Playwright + installed Google Chrome): recognition and
+  auto-send worked; speech output did not. One utterance was cut with `interrupted` after 3 s, and a sentence
+  queued from inside the previous utterance's end handler never played (no start, no end), so the mic never
+  reopened. Fix: queue every sentence at once, keep utterance references, cancel only when something plays,
+  overall watchdog. Real Chrome now runs listen, speak, listen, speak, listen, book with no gap.
+- Chrome's speech recognition ignores `--use-fake-device-for-media-stream` and listens on the real default mic.
+  Do not use it for automated tests; script recognition with a fake class instead.
+- User: "doesn't look like paytm app UI". Restyled from paytm.com/flights and /bus-tickets references: Paytm travel
+  wordmark, mode tabs (tap = switch vertical), From/To card with swap (tap = return trip), white cards on #f5f7fa,
+  Inter + Noto Sans Devanagari, phone-shaped app on desktop with the agent trace beside it.
+- Grid gotcha: a `display:none` item drops out of the grid and shifts later items up a row; rows are explicit now.
+- Origin defaults to the home city before asking the destination, so the card shows "Delhi" and the chips offer
+  only routes from Delhi.
