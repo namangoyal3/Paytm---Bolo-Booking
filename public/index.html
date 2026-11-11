@@ -1,129 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bolo Booking v2 - agent-orchestrated voice travel demo (Paytm Checkin concept)</title>
-<style>
-  :root { --paytm-blue:#00B9F1; --paytm-dark:#002E6E; --bg:#f4f8fb; }
-  * { box-sizing:border-box; margin:0; font-family:-apple-system,Segoe UI,Roboto,sans-serif; }
-  body { background:var(--bg); display:flex; justify-content:center; }
-  .app { width:100%; max-width:460px; min-height:100vh; background:#fff; display:flex; flex-direction:column; box-shadow:0 0 24px rgba(0,0,0,.08); }
-  header { background:linear-gradient(135deg,var(--paytm-dark),var(--paytm-blue)); color:#fff; padding:14px 16px; }
-  header h1 { font-size:18px; } header p { font-size:11px; opacity:.85; margin-top:2px; }
-  .banner { background:#fff8e1; color:#7a6000; font-size:11px; padding:6px 16px; border-bottom:1px solid #f0e0a0; }
-  #chat { flex:1; overflow-y:auto; padding:14px; display:flex; flex-direction:column; gap:10px; }
-  .msg { max-width:85%; padding:9px 12px; border-radius:14px; font-size:14px; line-height:1.4; white-space:pre-wrap; }
-  .msg.user { align-self:flex-end; background:var(--paytm-blue); color:#fff; border-bottom-right-radius:4px; }
-  .msg.bot { align-self:flex-start; background:#eef4fb; color:#123; border-bottom-left-radius:4px; }
-  .meta { font-size:10px; color:#8aa; margin-top:4px; }
-  .card { border:1px solid #dbe7f3; border-radius:12px; padding:10px 12px; background:#fff; font-size:13px; box-shadow:0 1px 4px rgba(0,46,110,.06); }
-  .card h3 { font-size:14px; color:var(--paytm-dark); margin-bottom:2px; }
-  .card .row { display:flex; justify-content:space-between; margin-top:4px; color:#345; }
-  .card .badge { font-weight:600; color:#0a8a3a; }
-  .card button { margin-top:8px; width:100%; padding:8px; border:0; border-radius:8px; background:var(--paytm-dark); color:#fff; font-size:13px; cursor:pointer; }
-  .ticket { border:2px dashed var(--paytm-blue); border-radius:12px; padding:12px; background:#f0faff; font-size:13px; }
-  .ticket h3 { color:var(--paytm-dark); font-size:15px; margin-bottom:6px; }
-  .ticket .pnr { font-size:18px; font-weight:700; letter-spacing:2px; color:var(--paytm-dark); }
-  .controls { border-top:1px solid #e3ecf5; padding:10px 12px; }
-  .inputrow { display:flex; gap:8px; }
-  #text { flex:1; padding:10px 12px; border:1px solid #cfdfea; border-radius:22px; font-size:14px; outline:none; }
-  #send { border:0; background:var(--paytm-dark); color:#fff; border-radius:22px; padding:0 16px; cursor:pointer; }
-  .microw { display:flex; align-items:center; gap:10px; margin-top:8px; }
-  #mic { flex:1; padding:12px; border:0; border-radius:22px; background:var(--paytm-blue); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
-  #mic.listening { background:#e03131; animation:pulse 1s infinite; }
-  @keyframes pulse { 50% { opacity:.75; } }
-  select { border:1px solid #cfdfea; border-radius:12px; padding:6px; font-size:13px; background:#fff; }
-  .hint { font-size:11px; color:#789; margin-top:6px; text-align:center; }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bolo Booking</title>
+<meta name="description" content="Voice travel booking in Hindi and English. Paytm Checkin concept demo with sample data.">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/app.css">
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>Bolo Booking v2</h1>
-    <p>Agent-orchestrated voice booking - Paytm Checkin concept demo</p>
-  </header>
-  <div class="banner">Sample data, mock payment. Trains · flights · buses · hotels · PNR/cancel · policy Q&amp;A</div>
-  <div id="chat"></div>
-  <div class="controls">
-    <div class="inputrow">
-      <input id="text" placeholder='Try "Delhi se Mumbai flight kal 5000 ke andar"'>
-      <button id="send">Send</button>
-    </div>
-    <div class="microw">
-      <button id="mic">🎤 Hold to speak</button>
-      <select id="lang">
-        <option value="hi-IN">हिंदी</option>
-        <option value="en-IN">English</option>
-      </select>
-    </div>
-    <div class="hint">Voice or text. Specialist agents handle each travel vertical.</div>
-  </div>
-</div>
-<script>
-const chat = document.getElementById('chat');
-const mic = document.getElementById('mic');
-const text = document.getElementById('text');
-const langSel = document.getElementById('lang');
-const sessionId = localStorage.getItem('bolo-sid') || (localStorage.setItem('bolo-sid', Math.random().toString(36).slice(2)), localStorage.getItem('bolo-sid'));
+<div class="page">
+  <div class="app">
+    <header class="appbar">
+      <div class="wordmark" aria-label="Paytm travel"><span class="pay">Pay</span><span class="tm">tm</span><span class="travel">travel</span></div>
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Language">
+          <button type="button" data-lang="hi" aria-pressed="true">हिं</button>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+        <button type="button" class="icon-btn" id="voiceToggle" aria-pressed="true"><i class="ph ph-speaker-high"></i></button>
+      </div>
+    </header>
 
-function addMsg(t, who, meta){
-  const d = document.createElement('div'); d.className = 'msg ' + who; d.textContent = t;
-  if (meta){ const s = document.createElement('div'); s.className = 'meta'; s.textContent = meta; d.appendChild(s); }
-  chat.appendChild(d); chat.scrollTop = chat.scrollHeight; return d;
-}
-function speak(t){ try { const u = new SpeechSynthesisUtterance(t); u.lang = langSel.value; speechSynthesis.cancel(); speechSynthesis.speak(u); } catch(e){} }
-function renderCards(cards){
-  cards.forEach((c, i) => {
-    const d = document.createElement('div'); d.className = 'card';
-    d.innerHTML = `<h3>${i+1}. ${c.title}</h3>
-      <div class="row"><span>${c.sub}</span></div>
-      <div class="row"><span>${c.detail}</span><span class="badge">${c.badge || ''}</span></div>
-      <button data-i="${i+1}">Select option ${i+1}</button>`;
-    d.querySelector('button').onclick = () => sendMessage(String(i+1));
-    chat.appendChild(d);
-  });
-  chat.scrollTop = chat.scrollHeight;
-}
-function renderTicket(t){
-  const d = document.createElement('div'); d.className = 'ticket';
-  d.innerHTML = `<h3>Booking confirmed (demo)</h3><div class="pnr">PNR ${t.pnr}</div>
-    <div>${t.title}</div><div>${t.sub} · ${t.date}</div>
-    <div>${t.passenger} · ₹${t.fare} · ${t.payment} · ${t.status}</div>`;
-  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
-}
-async function sendMessage(msg){
-  if (!msg.trim()) return;
-  addMsg(msg, 'user'); text.value = '';
-  const thinking = addMsg('…', 'bot');
-  try {
-    const r = await fetch('/api/chat', { method:'POST', headers:{'content-type':'application/json'},
-      body: JSON.stringify({ message: msg, sessionId }) });
-    const j = await r.json();
-    thinking.childNodes[0].textContent = j.reply || '...';
-    const meta = `agent: ${j.vertical}` + (j.engine ? ` · slots: ${j.engine}` : '') + (j.retrieved ? ` · KB: ${j.retrieved.join(', ')}` : '');
-    const s = document.createElement('div'); s.className = 'meta'; s.textContent = meta; thinking.appendChild(s);
-    if (j.cards) renderCards(j.cards);
-    if (j.ticket) renderTicket(j.ticket);
-    speak(j.reply || '');
-  } catch(e){ thinking.childNodes[0].textContent = 'Network error - try again.'; }
-}
-document.getElementById('send').onclick = () => sendMessage(text.value);
-text.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(text.value); });
-const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-let rec = null;
-if (SR) {
-  rec = new SR(); rec.interimResults = false; rec.maxAlternatives = 1;
-  rec.onresult = e => sendMessage(e.results[0][0].transcript);
-  rec.onend = () => mic.classList.remove('listening');
-  rec.onerror = () => mic.classList.remove('listening');
-  const start = () => { rec.lang = langSel.value; mic.classList.add('listening'); try{rec.start();}catch(e){} };
-  const stop = () => { try{rec.stop();}catch(e){} };
-  mic.addEventListener('pointerdown', start);
-  mic.addEventListener('pointerup', stop);
-  mic.addEventListener('pointerleave', stop);
-} else { mic.disabled = true; mic.textContent = 'Voice needs Chrome'; }
-addMsg('Namaste! Trains, flights, buses, hotels - boliye ya type kariye. PNR status, cancellation aur policy questions bhi.', 'bot');
-</script>
+    <nav class="tabs" aria-label="Travel mode">
+      <button type="button" data-mode="flight"><i class="ph ph-airplane-tilt"></i><span data-t="tabFlight"></span></button>
+      <button type="button" data-mode="bus"><i class="ph ph-bus"></i><span data-t="tabBus"></span></button>
+      <button type="button" data-mode="train"><i class="ph ph-train"></i><span data-t="tabTrain"></span></button>
+      <button type="button" data-mode="hotel"><i class="ph ph-bed"></i><span data-t="tabHotel"></span></button>
+    </nav>
+
+    <section class="search" id="trip" hidden aria-live="polite">
+      <div class="search-row">
+        <div class="field"><small id="fromLabel" data-t="from"></small><b id="tripFrom"></b></div>
+        <button type="button" class="swap" id="swap"><i class="ph ph-arrows-left-right"></i></button>
+        <div class="field to" id="toField"><small data-t="to"></small><b id="tripTo"></b></div>
+      </div>
+      <div class="search-meta">
+        <span><i class="ph ph-calendar-blank"></i><span id="tripDate"></span></span>
+        <span id="tripModeWrap"><i class="ph" id="tripModeIcon"></i><span id="tripMode"></span></span>
+        <span id="tripBudgetWrap" hidden><i class="ph ph-wallet"></i><span id="tripBudget"></span></span>
+      </div>
+    </section>
+
+    <main id="log" aria-live="polite"></main>
+
+    <footer class="dock">
+      <div class="chips" id="chips"></div>
+      <form class="composer" id="composer" autocomplete="off">
+        <div class="field-in">
+          <input id="text" name="message" maxlength="500" enterkeyhint="send">
+          <div class="listen" aria-live="polite"><span class="bars" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span class="heard" id="heard"></span></div>
+          <button type="submit" class="send" id="send" disabled><i class="ph-fill ph-paper-plane-right"></i></button>
+        </div>
+        <button type="button" class="mic" id="mic" aria-pressed="false"><i class="ph-fill ph-microphone"></i></button>
+      </form>
+      <p class="hint" id="hint"></p>
+    </footer>
+  </div>
+
+  <aside class="side">
+    <section class="side-card">
+      <h2 data-t="traceTitle"></h2>
+      <ol id="trace"><li class="empty" data-t="traceEmpty"></li></ol>
+    </section>
+    <p class="note" data-t="note"></p>
+    <a class="note admin-link" href="/admin" target="_blank" rel="noopener">Agent console →</a>
+  </aside>
+</div>
+<script type="module" src="/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent console · Bolo Booking</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="/tokens.css">
+<link rel="stylesheet" href="/admin.css">
+</head>
+<body>
+<header class="bar">
+  <div class="brand">
+    <div class="wordmark" aria-label="Paytm travel"><span class="pay">Pay</span><span class="tm">tm</span><span class="travel">travel</span></div>
+    <span class="crumb">Agent console</span>
+  </div>
+  <div class="bar-tools">
+    <label class="select"><span class="sr">Session</span><select id="session"><option value="">All sessions</option></select></label>
+    <button type="button" class="live" id="live" aria-pressed="true"><span class="dot"></span><span id="liveText">Live</span></button>
+    <a class="open-app" href="/" target="_blank" rel="noopener"><i class="ph ph-arrow-square-out"></i>Open app</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="stats" aria-label="Summary">
+    <div class="stat"><small>Turns</small><b class="num" id="kTurns">0</b></div>
+    <div class="stat"><small>Median turn time</small><b class="num" id="kMs">–</b></div>
+    <div class="stat"><small>Bookings</small><b class="num" id="kBooked">0</b></div>
+    <div class="stat"><small>Errors</small><b class="num" id="kErrors">0</b></div>
+    <div class="stat wide">
+      <small>Understood by</small>
+      <div class="engines" id="engines" aria-hidden="true"></div>
+      <ul class="legend" id="engineLegend"></ul>
+    </div>
+  </section>
+
+  <div class="cols">
+    <div class="left">
+      <section class="card list-card">
+        <h2>Turns <span class="muted num" id="listCount"></span></h2>
+        <ol class="turns" id="turns"></ol>
+      </section>
+      <section class="card">
+        <h2>Agents</h2>
+        <ul class="agents" id="agents"></ul>
+      </section>
+    </div>
+    <section class="card detail" id="detail" aria-live="polite"></section>
+  </div>
+</main>
+<script type="module" src="/admin.js"></script>
+</body>
+</html>
