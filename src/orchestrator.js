@@ -7,7 +7,7 @@ import { busAgent } from "./agents/busAgent.js";
 import { hotelAgent } from "./agents/hotelAgent.js";
 import { postBookingAgent } from "./agents/postBookingAgent.js";
 import { policyAgent } from "./agents/policyAgent.js";
-import { learnPrefs, savePrefs } from "./memory.js";
+import { learnPrefs } from "./memory-shared.js";
 
 const ROUTES = [
   { vertical:"train", agent:trainAgent, words:["train","rail","rajdhani","shatabdi","garib","irctc","tatkal",] },
@@ -43,7 +43,6 @@ export async function orchestrate(message, session){
   const agent = ROUTES.find(r => r.vertical === vertical).agent;
   const out = await agent(message, session);
   learnPrefs(session, out.nlu || {});
-  await savePrefs(session.prefs);
   out.vertical = vertical;
   return out;
 }

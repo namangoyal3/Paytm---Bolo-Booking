@@ -7,7 +7,7 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { orchestrate } from "./src/orchestrator.js";
-import { loadPrefs, newSession } from "./src/memory.js";
+import { loadPrefs, savePrefs, newSession } from "./src/memory.js";
 
 const PORT = process.env.PORT || 8787;
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -21,6 +21,7 @@ async function handleChat(req, res){
   if (!sessions.has(sid)) sessions.set(sid, newSession({ ...PREFS }));
   const session = sessions.get(sid);
   const out = await orchestrate(message || "", session);
+  await savePrefs(session.prefs);
   res.writeHead(200, { "content-type": "application/json" });
   res.end(JSON.stringify({ reply: out.reply || "", cards: out.cards || null, ticket: out.ticket || null,
     vertical: out.vertical, retrieved: out.retrieved || null, engine: out.nlu?.engine || "none" }));

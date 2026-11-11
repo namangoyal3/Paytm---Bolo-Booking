@@ -1,24 +1,14 @@
-// Memory: per-session state (in-process) + persistent user preferences (JSON file).
+// Node-only persistence wrapper: prefs saved to memory.json (gitignored, stays local).
 import { readFile, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-
+import { DEFAULT_PREFS, newSession, learnPrefs } from "./memory-shared.js";
+export { newSession, learnPrefs };
 const FILE = join(dirname(fileURLToPath(import.meta.url)), "..", "memory.json");
-const DEFAULTS = { name: "Naman Goyal", preferredClass: "3A", budget: null, language: "hi-IN", homeCity: "delhi" };
-
 export async function loadPrefs(){
-  try { return { ...DEFAULTS, ...JSON.parse(await readFile(FILE, "utf8")) }; }
-  catch(e){ return { ...DEFAULTS }; }
+  try { return { ...DEFAULT_PREFS, ...JSON.parse(await readFile(FILE, "utf8")) }; }
+  catch(e){ return { ...DEFAULT_PREFS }; }
 }
 export async function savePrefs(prefs){
   try { await writeFile(FILE, JSON.stringify(prefs, null, 2)); } catch(e){}
-}
-export function newSession(prefs){
-  return { prefs, vertical: null, lastOptions: null, search: null, selected: null, pending: null, bookings: [], turns: 0 };
-}
-export function learnPrefs(session, nlu){
-  // Update persistent prefs from observed choices.
-  if (nlu.budget) session.prefs.budget = nlu.budget;
-  if (nlu.cls) session.prefs.preferredClass = nlu.cls;
-  return session.prefs;
 }
