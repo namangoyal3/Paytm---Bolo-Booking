@@ -4,10 +4,11 @@ import { FLIGHTS } from "./data/flights.js";
 import { BUSES } from "./data/buses.js";
 import { HOTELS } from "./data/hotels.js";
 import { retrieve } from "./rag.js";
+import { traceStep } from "./activity.js";
 
 function minOf(obj){ return Math.min(...Object.values(obj)); }
 
-export const tools = {
+const impl = {
   search_trains({ from, to, budget, cls }){
     return TRAINS.filter(t => t.fromCity === from && t.toCity === to)
       .map(t => ({ kind:"train", id:t.no, title:`${t.no} ${t.name}`, sub:`${t.from} ${t.dep} -> ${t.to} ${t.arr} · ${t.dur}`,
@@ -53,3 +54,17 @@ export const tools = {
   },
   kb_search({ query, k }){ return retrieve(query, k || 3); }
 };
+
+// Every tool call is reported to the admin console with short arguments and a short result.
+const brief = {
+  args: (name, [a, prefs, date]) => name === "book" ? { option: a.title, date } : ["pnr_status", "cancel_booking"].includes(name) ? { pnr: a.pnr }
+    : Object.fromEntries(Object.entries(a || {}).filter(([, v]) => v != null && v !== "")),
+  result: (name, out) => Array.isArray(out) ? { count: out.length, top: out.slice(0, 3).map(x => x.title) }
+    : name === "book" ? { pnr: out.pnr, fare: out.fare } : name === "cancel_booking" ? { refund: out.refundNote } : { status: out.status }
+};
+export const tools = Object.fromEntries(Object.entries(impl).map(([name, fn]) => [name, (...args) => {
+  const t0 = Date.now(), out = fn(...args);
+  traceStep({ type: "tool", name, args: brief.args(name, args), result: brief.result(name, out), ms: Date.now() - t0 });
+  return out;
+}]));
+

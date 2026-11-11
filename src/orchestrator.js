@@ -10,6 +10,7 @@ import { policyAgent } from "./agents/policyAgent.js";
 import { tools } from "./tools.js";
 import { TODAY } from "./agents/shared.js";
 import { learnPrefs } from "./memory-shared.js"; // no fs here: the Worker imports this module too
+import { withTrace, traceStep, recordTurn } from "./activity.js";
 
 // Merge what this turn says into the trip so far. Hotels use `to` as their city, so "hotel bhi" after a
 // Delhi -> Mumbai search finds Mumbai hotels, and "flight dikhao" after Goa hotels flies to Goa.
@@ -58,12 +59,14 @@ function select(turn, session, t){
   const idx = turn.selection ? turn.selection - 1 : turn.sort ? opts.indexOf(sortOptions(opts, turn.sort)[0]) : -1;
   if (!opts[idx]) return { agent: session.search.vertical || "orchestrator", reply: t.whichOne(opts.length), chips: t.optionChips(opts.length) };
   session.pending = { option: opts[idx], date: session.search.date, search: { ...session.search } };
+  traceStep({ type: "guard", name: "Read back, wait for an explicit yes", result: { holding: opts[idx].title } });
   return { agent: opts[idx].kind, reply: t.readBack(opts[idx], session.pending, session.prefs), chips: t.confirmChips(), selected: idx };
 }
 
 function confirm(session, t){
   if (session.pendingCancel) return { agent: "post", ...confirmCancel(session, t) };
   if (session.pending){ // GUARDRAIL: books only after a read-back and an explicit yes
+    traceStep({ type: "guard", name: "Explicit yes after the read-back", result: { booking: session.pending.option.title } });
     const { option, date, search: trip } = session.pending;
     const booking = { ...tools.book(option, session.prefs, date), search: trip };
     session.bookings.push(booking);
@@ -98,11 +101,33 @@ async function handle(turn, message, session, t, lang){
 
 export async function orchestrate(message, session, lang = "hi"){
   session.turns++;
-  const t = replies(lang);
-  const turn = await understand(message, session, lang);
-  const out = await handle(turn, message, session, t, lang);
+  const t = replies(lang), t0 = Date.now(), steps = [];
+  let turn = null, out = null;
+  try {
+    turn = await understand(message, session, lang);
+    const understandMs = Date.now() - t0;
+    out = await withTrace(steps, () => handle(turn, message, session, t, lang));
+    record(message, session, lang, turn, out, steps, { understand: understandMs, total: Date.now() - t0 });
+  } catch (e){
+    record(message, session, lang, turn, null, steps, { total: Date.now() - t0 }, e);
+    throw e;
+  }
   learnPrefs(session, turn);
   return { chips: [], ...out, trip: t.trip(session.search), vertical: out.agent, intent: turn.intent, engine: turn.engine, nlu: turn };
+}
+
+// One admin-console record per turn: what was understood, the trip after the merge, the agent, its steps.
+function record(message, session, lang, turn, out, steps, ms, error){
+  const understood = turn ? Object.fromEntries(Object.entries(turn).filter(([k, v]) => v != null && !["intent", "engine", "say"].includes(k))) : null;
+  recordTurn({
+    session: session.id, lang, message, ms, steps,
+    engine: turn?.engine || null, intent: turn?.intent || null, understood,
+    trip: session.search ? { ...session.search } : null,
+    agent: out?.agent || null, reply: out?.reply || null,
+    outcome: out ? { cards: out.cards?.length || 0, selected: out.selected ?? null, booked: out.ticket?.pnr || null,
+      cancelled: out.cancelled || null, awaiting: session.pendingCancel ? "cancel" : session.pending ? "booking" : null, asked: session.asked } : null,
+    error: error ? String(error.message || error).slice(0, 200) : null
+  });
 }
 
 // Which specialist the keyword path would pick (used by the routing evals).

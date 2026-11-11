@@ -62,6 +62,20 @@ The UI follows the Paytm Travel app look: mode tabs, a From/To search card, whit
 | Fully offline (keyword parser) | `LLM_PROVIDER=none node server.js` |
 | Evals | `node evals/run.js` |
 
+## Agent console
+
+Open `/admin` to watch the agents work. Each turn shows these items:
+
+- The words that the user said.
+- How the orchestrator understood them (Claude, an instant rule or the keyword parser), with the intent and the slots.
+- The trip state after the merge.
+- The agent that took the turn.
+- Each tool call, with its arguments and a short result.
+- The booking guardrail (read-back, then an explicit yes).
+- The outcome and the reply, with timings.
+
+The console polls `GET /api/admin/activity`, which keeps the last 200 turns in memory. Locally, only this machine can read it. Set `ADMIN_TOKEN` to read it from another machine, and open `/admin?token=<token>`. On Cloudflare Workers the console is off until you set the secret with `npx wrangler secret put ADMIN_TOKEN`. Each Worker isolate keeps its own turns.
+
 ## Evals
 
 `node evals/run.js` runs 66 cases across seven suites and prints pass rates. It exits non-zero on a failure.

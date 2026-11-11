@@ -1,38 +1,5 @@
 /* Bolo Booking in the Paytm Travel visual language: white cards on a light grey app background, navy ink,
    Paytm sky blue for selection and the mic, green for savings. Radius rule: cards and fields 12px, chips pill. */
-:root {
-  --page: #e9eef4; --bg: #f5f7fa; --surface: #ffffff; --surface-2: #f2f5f8; --line: #e3e8ee;
-  --ink: #101828; --ink-2: #475467; --ink-3: #667085;
-  --navy: #002e6e; --sky: #00baf2; --sky-ink: #0079b8; --sky-soft: #e7f7fd;
-  --primary: #002e6e; --on-primary: #ffffff; --on-sky: #00265a;
-  --ok: #0e7c4f; --ok-soft: #e6f6ee; --bad: #c4320a; --bad-soft: #fef0eb;
-  --shadow: 0 1px 2px rgb(16 24 40 / 5%);
-  --shadow-up: 0 -6px 16px -8px rgb(16 24 40 / 14%);
-  --r: 12px; --pill: 999px;
-  --font: "Inter", "Noto Sans Devanagari", system-ui, -apple-system, sans-serif;
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --page: #060a12; --bg: #0b1220; --surface: #131c2e; --surface-2: #1a2540; --line: #24324f;
-    --ink: #eef2f8; --ink-2: #b4bfd2; --ink-3: #8d9ab3;
-    --navy: #ffffff; --sky: #22c4f6; --sky-ink: #5fd3fa; --sky-soft: #0d2b45;
-    --primary: #22c4f6; --on-primary: #04203f; --on-sky: #04203f;
-    --ok: #4fd18f; --ok-soft: #0c3324; --bad: #ff8a6e; --bad-soft: #3a1a12;
-    --shadow: none; --shadow-up: 0 -6px 16px -8px rgb(0 0 0 / 50%);
-    color-scheme: dark;
-  }
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
-body { background: var(--page); color: var(--ink); font: 400 15px/1.5 var(--font); -webkit-font-smoothing: antialiased; }
-button, input { font: inherit; color: inherit; }
-button { cursor: pointer; border: 0; background: none; }
-:focus-visible { outline: 2px solid var(--sky); outline-offset: 2px; }
-.num { font-variant-numeric: tabular-nums; }
-.ph, .ph-fill { line-height: 1; }
-
 /* Page: the app is phone-shaped everywhere; wide screens add a demo side panel. */
 .page { min-height: 100dvh; display: flex; justify-content: center; gap: 32px; }
 .app { width: 100%; max-width: 480px; height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr) auto; background: var(--bg); }

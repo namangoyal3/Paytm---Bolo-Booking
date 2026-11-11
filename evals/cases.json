@@ -27,7 +27,8 @@
     { "q": "travel pass price", "doc": "kb-travel-pass", "token": "249" },
     { "q": "bus refund guarantee", "doc": "kb-assured-bus", "token": "refund" },
     { "q": "train ticket confirm hoga kya help", "doc": "kb-pnr-prediction", "token": "confirmed" },
-    { "q": "hotels kahan se aate hain", "doc": "kb-hotels-agoda", "token": "Agoda" }
+    { "q": "hotels kahan se aate hain", "doc": "kb-hotels-agoda", "token": "Agoda" },
+    { "q": "refund policy kya hai", "doc": "kb-instant-refund", "token": "refund" }
   ],
   "guardrails": [
     { "flow": ["delhi se mumbai train kal", "1"], "expectPending": true, "expectTicket": false },

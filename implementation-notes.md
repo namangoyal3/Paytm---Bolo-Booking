@@ -56,3 +56,8 @@ Live build log. Deviations, edge cases and non-obvious decisions only.
 - Grid gotcha: a `display:none` item drops out of the grid and shifts later items up a row; rows are explicit now.
 - Origin defaults to the home city before asking the destination, so the card shows "Delhi" and the chips offer
   only routes from Delhi.
+- Merge with main (Workers deploy debf226) done on the feature branch, not on main: the trial merge conflicted. `src/api.js` now holds the /api/chat contract for both server.js and the Worker.
+- Mic: `continuous = true` with app-side end of speech (2 s after a final result, 3 s after interim text, 9 s with no speech, 30 s cap). Chrome ends recognition on its own, so the app restarts it inside the same turn. 1.3 s silence was too short: a 1.6 s pause sent "दिल्ली से" alone.
+- Admin console: tool calls report through AsyncLocalStorage (`src/activity.js`), wrapped once in `tools.js`, so concurrent requests do not mix steps. Alternative-mode searches are labelled in the UI (tool vertical differs from the agent), not in the backend.
+- The console showed that "refund policy kya hai" retrieved nothing: BM25 matched exact tokens ("refund" vs "refunds"). Added a suffix strip in `rag.js`; plural fold alone reordered the "confirm" case, so "-ed"/"-ation" are stripped too.
+- Admin guard: loopback only, or ADMIN_TOKEN compared as SHA-256 digests. The Worker returns 403 unless the secret is set.

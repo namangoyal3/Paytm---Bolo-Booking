@@ -8,13 +8,24 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, sep } from "node:path";
 import { orchestrate } from "./src/orchestrator.js";
 import { loadPrefs, savePrefs, newSession } from "./src/memory.js";
-import { MAX_BODY, parseChat, chatResponse, chatError } from "./src/api.js";
+import { MAX_BODY, parseChat, chatResponse, chatError, tokenMatches, sessionLabel } from "./src/api.js";
+import { activity } from "./src/activity.js";
 
 const PORT = process.env.PORT || 8787;
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const PUBLIC = resolve(ROOT, "public");
 const sessions = new Map(); // ponytail: in-memory and unbounded; fine for a local demo, add expiry before hosting it
 const PREFS = await loadPrefs();
+const LOOPBACK = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+// The admin console is readable from this machine only, or anywhere with ADMIN_TOKEN (x-admin-token header).
+// ponytail: a reverse proxy on this machine also looks like loopback; set ADMIN_TOKEN before exposing the port.
+async function handleActivity(req, res, url){
+  const token = process.env.ADMIN_TOKEN;
+  const ok = token ? await tokenMatches(req.headers["x-admin-token"], token) : LOOPBACK.has(req.socket.remoteAddress);
+  if (!ok) return send(res, 403, { error: "Admin only" });
+  send(res, 200, activity(Number(url.searchParams.get("since")) || 0));
+}
 
 function send(res, status, body){
   res.writeHead(status, { "content-type": "application/json" });
@@ -26,7 +37,7 @@ async function handleChat(req, res){
   for await (const c of req){ body += c; if (body.length > MAX_BODY) return send(res, 413, { error: "Message too long" }); }
   const { message, sid, lang, status, error } = parseChat(body);
   if (error) return send(res, status, { error });
-  if (!sessions.has(sid)) sessions.set(sid, newSession({ ...PREFS }));
+  if (!sessions.has(sid)) sessions.set(sid, newSession({ ...PREFS }, sessionLabel(sid)));
   const session = sessions.get(sid);
   try {
     const out = await orchestrate(message, session, lang);
@@ -43,9 +54,10 @@ const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; cha
 http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   if (url.pathname === "/api/chat" && req.method === "POST") return handleChat(req, res);
+  if (url.pathname === "/api/admin/activity" && req.method === "GET") return handleActivity(req, res, url);
   let path;
   try { path = decodeURIComponent(url.pathname); } catch(e){ res.writeHead(400); return res.end("bad path"); } // "%zz" throws
-  const file = resolve(PUBLIC, "." + (path === "/" ? "/index.html" : path));
+  const file = resolve(PUBLIC, "." + (path === "/" ? "/index.html" : path === "/admin" ? "/admin.html" : path));
   if (!file.startsWith(PUBLIC + sep)){ res.writeHead(403); return res.end("forbidden"); }
   try {
     const data = await readFile(file);

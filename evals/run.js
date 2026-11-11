@@ -65,6 +65,18 @@ for (const c of cases.conversation){ // multi-turn: context carries, missing inf
   if ("replyHas" in e && !out.reply.includes(e.replyHas)) why.push(`reply="${out.reply}"`);
   check(`conversation: ${c.flow.join(" / ")}`, !why.length, why.join(" ") + ` :: ${out.reply}`);
 }
+{ // admin console: each turn is recorded with its agent, its tool calls and the booking guardrail, in order
+  const { activity } = await import("../src/activity.js");
+  const s = newSession({ ...PREFS }, "evaltest"), before = activity().turns.at(-1)?.id || 0;
+  for (const msg of ["delhi se jaipur bus", "2", "haan"]) await orchestrate(msg, s);
+  const turns = activity(before).turns.filter(t => t.session === "evaltest");
+  const names = turns.flatMap(t => t.steps.map(x => x.name)), at = n => names.indexOf(n);
+  const [readBack, yes, book] = [at("Read back, wait for an explicit yes"), at("Explicit yes after the read-back"), at("book")];
+  check("activity: 3 turns recorded", turns.length === 3, `got ${turns.length}`);
+  check("activity: search tool traced with results", turns[0]?.steps[0]?.name === "search_buses" && turns[0].steps[0].result.count > 0, JSON.stringify(turns[0]?.steps[0]));
+  check("activity: read-back, then yes, then book", readBack >= 0 && readBack < yes && yes < book, names.join(","));
+  check("activity: booking outcome", !!turns[2]?.outcome?.booked && turns[2].agent === "bus" && turns[2].ms.total >= 0, JSON.stringify(turns[2]?.outcome));
+}
 const { toSpeech } = await import("../public/speech.js");
 for (const c of cases.speech){
   const got = toSpeech(c.reply, c.lang);

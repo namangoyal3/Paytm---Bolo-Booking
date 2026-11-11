@@ -19,4 +19,12 @@ export const chatResponse = (out, lang) => ({
   agent: out.agent, selected: out.selected ?? null, retrieved: out.retrieved || null, source: out.source || null,
   engine: out.engine, intent: out.intent, lang
 });
+// Admin console access. Compares SHA-256 digests, so the comparison time says nothing about the token.
+export async function tokenMatches(given, expected){
+  if (!given || !expected) return false;
+  const digest = async s => new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(s))));
+  const [a, b] = await Promise.all([digest(given), digest(expected)]);
+  return a.every((x, i) => x === b[i]);
+}
+export const sessionLabel = sid => sid.slice(0, 8);
 export const chatError = lang => ({ error: ERROR[lang] || ERROR.hi });

@@ -2,7 +2,15 @@
 import { KB } from "./kb/policies.js";
 
 const STOP = new Set(["the","a","an","is","on","in","for","of","to","and","or","kya","hai","ka","ki","ke","mein","se"]);
-function tokens(s){ return (s||"").toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(t => t && !STOP.has(t)); }
+// ponytail: suffix strip, not a real stemmer ("refunds" -> "refund", "confirmed" / "confirmation" -> "confirm").
+// Swap in Porter stemming if recall still misses.
+const SUFFIX = ["ation", "ing", "ed", "es", "s"];
+function stem(t){
+  if (t.endsWith("ss")) return t;
+  for (const x of SUFFIX) if (t.endsWith(x) && t.length - x.length >= 3) return t.slice(0, -x.length);
+  return t;
+}
+function tokens(s){ return (s||"").toLowerCase().replace(/[^a-z0-9\s]/g," ").split(/\s+/).filter(t => t && !STOP.has(t)).map(stem); }
 
 const DOCS = KB.map(d => ({ ...d, toks: tokens(d.title + " " + d.text) }));
 const DF = {};
