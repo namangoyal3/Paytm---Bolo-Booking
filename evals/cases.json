@@ -47,6 +47,10 @@
     {"flow":["जयपुर में होटल 2000 तक","दिल्ली से मुंबई फ्लाइट"],"vertical":"flight"}
   ],
   "conversation": [
+    {"flow":["hotels in goa"],"lang":"en","expect":{"agent":"hotel","cards":true,"chips":true,"replyHas":"When do you check in, and what is your budget per night?"}},
+    {"flow":["hotels in goa","tomorrow"],"lang":"en","expect":{"agent":"hotel","cards":true,"date":"2026-11-12","replyHas":"What is your budget per night?"}},
+    {"flow":["hotels in goa","tomorrow","under 3500"],"lang":"en","expect":{"agent":"hotel","cards":true,"replyHas":"Which one should I book?"}},
+    {"flow":["गोवा में होटल","कल","3500 के अंदर"],"expect":{"agent":"hotel","cards":true,"date":"2026-11-12","replyHas":"कौन सा बुक करूँ?"}},
     {"flow":["कल दिल्ली से मुंबई ट्रेन","फ्लाइट दिखाओ"],"expect":{"agent":"flight","cards":true,"from":"delhi","to":"mumbai"}},
     {"flow":["Delhi se Mumbai flight kal","parso ka"],"expect":{"agent":"flight","cards":true,"date":"2026-11-13"}},
     {"flow":["मुझे कल मुंबई जाना है"],"expect":{"agent":"orchestrator","cards":true,"from":"delhi","to":"mumbai","date":"2026-11-12","replyHas":"फ्लाइट"}},
