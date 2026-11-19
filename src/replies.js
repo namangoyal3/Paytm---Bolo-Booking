@@ -43,6 +43,13 @@ export function replies(lang){
   const dur = d => { const [, h, m] = /(\d+)h\s*(\d+)?/.exec(d || "") || []; return hi ? `${h} घंटे${m ? ` ${m} मिनट` : ""}` : `${h} h${m ? ` ${m} min` : ""}`; };
   const list = xs => xs.join(hi ? " और " : " and ");
 
+  const FILTER = { hi: { morning: "सुबह", afternoon: "दोपहर", evening: "शाम", night: "रात", nonstop: "नॉन-स्टॉप", breakfast: "नाश्ते के साथ", ac: "AC", nonac: "नॉन-AC", sleeper: "स्लीपर", seater: "सीटर", volvo: "वोल्वो" },
+    en: { morning: "morning", afternoon: "afternoon", evening: "evening", night: "night", nonstop: "non-stop", breakfast: "with breakfast", ac: "AC", nonac: "non-AC", sleeper: "sleeper", seater: "seater", volvo: "Volvo" } };
+  const filterLabel = f => !f ? "" : [f.time, f.nonstop && "nonstop", ...(f.bus || []), f.breakfast && "breakfast"].filter(Boolean).map(k => FILTER[L][k])
+    .concat(f.stars ? [hi ? `${f.stars} स्टार या ऊपर` : `${f.stars} star and above`] : []).join(", ");
+  const relaxedHead = (s, relaxed) => relaxed === "filters" ? (hi ? `“${filterLabel(s.filters)}” से कुछ नहीं मिला, तो सभी विकल्प दिखा रहा हूँ। ` : `Nothing matches “${filterLabel(s.filters)}”, so here are all the options. `)
+    : relaxed ? (hi ? `${rupees(s.budget)} के अंदर कुछ नहीं मिला, तो सबसे सस्ते विकल्प दिखा रहा हूँ। ` : `Nothing under ${rupees(s.budget)}, so here are the cheapest. `) : "";
+  const applied = (s, relaxed) => s.filters && !relaxed ? (hi ? ` फ़िल्टर: ${filterLabel(s.filters)}।` : ` Filter: ${filterLabel(s.filters)}.`) : "";
   function highlight(s, o){
     const r = o.raw;
     if (s.vertical === "hotel") return hi ? `सबसे सस्ता: ${r.name}, ${rupees(o.price)} प्रति रात।` : `Cheapest: ${r.name}, ${rupees(o.price)} a night.`;
@@ -62,7 +69,7 @@ export function replies(lang){
     askTo: s => s.vertical === "hotel" ? (hi ? "किस शहर में होटल चाहिए?" : "Which city do you need a hotel in?")
       : s.from ? (hi ? `${place(s.from)} से कहाँ जाना है?` : `Where to from ${place(s.from)}?`) : (hi ? "कहाँ जाना है?" : "Where would you like to go?"),
     compare(s, groups, top, relaxed){
-      const head = relaxed ? (hi ? `${rupees(s.budget)} के अंदर कुछ नहीं मिला, तो सबसे सस्ते विकल्प दिखा रहा हूँ। ` : `Nothing under ${rupees(s.budget)}, so here are the cheapest. `) : "";
+      const head = relaxedHead(s, relaxed);
       const parts = groups.map(g => hi ? `${g.count} ${noun(g.vertical, g.count)} ${rupees(g.min)} से` : `${g.count} ${noun(g.vertical, g.count)} from ${rupees(g.min)}`).join(", ");
       const r = top.raw, name = r.airline || r.operator || r.name;
       return hi ? `${head}${when(s.date)}, ${place(s.from)} से ${place(s.to)}: ${parts}। सबसे सस्ता: ${NOUN.hi[top.kind][0]}, ${name}, ${clock(r.dep)}, ${rupees(top.price)}। ${s.dateSet ? "कौन सा बुक करूँ?" : "मैंने आज की तारीख़ मानी है। दूसरी तारीख़ बताइए, या इनमें से एक चुनिए।"}`
@@ -73,7 +80,7 @@ export function replies(lang){
     sameCity: s => hi ? `${place(s.from)} से ${place(s.to)}? यह एक ही शहर है। कहाँ जाना है?` : `${place(s.from)} to ${place(s.to)} is the same city. Where to?`,
     results(s, opts, relaxed){
       const n = opts.length;
-      const head = relaxed ? (hi ? `${rupees(s.budget)} के अंदर कुछ नहीं मिला, तो सबसे सस्ते विकल्प दिखा रहा हूँ। ` : `Nothing under ${rupees(s.budget)}, so here are the cheapest. `) : "";
+      const head = relaxedHead(s, relaxed);
       const found = s.vertical === "hotel"
         ? (hi ? `${place(s.to)} में ${n} होटल ${n === 1 ? "मिला" : "मिले"}${s.dateSet ? `, ${when(s.date)} चेक-इन` : ""}।` : `Found ${n} ${noun("hotel", n)} in ${place(s.to)}${s.dateSet ? `, check-in ${when(s.date)}` : ""}.`)
         : (hi ? `${when(s.date)}, ${place(s.from)} से ${place(s.to)} की ${n} ${noun(s.vertical, n)} ${n === 1 ? "मिली" : "मिलीं"}।`
@@ -84,7 +91,7 @@ export function replies(lang){
         : !s.dateSet ? (hi ? "मैंने आज की तारीख़ मानी है। दूसरी तारीख़ बताइए, या इनमें से एक चुनिए।" : "I assumed today. Tell me another date, or pick one to book.")
         : needBudget ? (hi ? "एक रात का बजट कितना है?" : "What is your budget per night?")
         : hi ? (s.vertical === "hotel" ? "कौन सा बुक करूँ?" : "कौन सी बुक करूँ?") : "Which one should I book?";
-      return `${head}${found} ${highlight(s, opts[0])} ${ask}`;
+      return `${head}${found}${applied(s, relaxed)} ${highlight(s, opts[0])} ${ask}`;
     },
     noRoute(s, alt){
       if (s.vertical === "hotel") return hi ? `${place(s.to)} में होटल अभी डेमो डेटा में नहीं हैं। ये शहर आज़माइए।` : `No hotels in ${place(s.to)} in the demo data yet. Try one of these cities.`;
@@ -126,7 +133,7 @@ export function replies(lang){
       from: s.from ? place(s.from) : null, to: s.to ? place(s.to) : null,
       date: REL[L][daysFromToday(s.date)] ? `${REL[L][daysFromToday(s.date)].replace(/^./, c => c.toUpperCase())}, ${day(s.date)}` : day(s.date),
       mode: s.vertical || "all", modeLabel: s.vertical ? cap(NOUN[L][s.vertical][0]) : (hi ? "सभी साधन" : "All modes"),
-      budget: s.budget ? (hi ? `${rupees(s.budget)} तक` : `Under ${rupees(s.budget)}`) : null
+      budget: [s.budget ? (hi ? `${rupees(s.budget)} तक` : `Under ${rupees(s.budget)}`) : null, filterLabel(s.filters)].filter(Boolean).join(" · ") || null
     } : null,
     policyMiss: () => hi ? "यह जानकारी मेरे पॉलिसी नॉलेज बेस में नहीं है।" : "I don't have that in my policy knowledge base.",
 

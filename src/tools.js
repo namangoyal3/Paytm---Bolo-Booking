@@ -8,31 +8,44 @@ import { traceStep } from "./activity.js";
 
 function minOf(obj){ return Math.min(...Object.values(obj)); }
 
+// Spoken filters. Each one only applies to the kind it makes sense for, so "morning" never hides a hotel.
+const SLOT = { morning: [4, 12], afternoon: [12, 16], evening: [16, 20], night: [20, 28] };
+const BUS = { ac: t => /\bAC\b/.test(t) && !/Non-AC/.test(t), nonac: t => /Non-AC/.test(t), sleeper: t => /(?<!Semi-)Sleeper/.test(t), seater: t => /Seater/.test(t), volvo: t => /Volvo/.test(t) };
+export function passes(o, f){
+  if (!f) return true;
+  const r = o.raw;
+  if (o.kind === "hotel") return (!f.stars || r.stars >= f.stars) && (!f.breakfast || r.breakfast);
+  if (f.time){ const h = +r.dep.slice(0, 2), [a, b] = SLOT[f.time]; if (!((h >= a && h < b) || (h + 24 >= a && h + 24 < b))) return false; }
+  if (o.kind === "flight" && f.nonstop && !r.nonstop) return false;
+  if (o.kind === "bus" && f.bus && !f.bus.every(k => BUS[k](r.type))) return false;
+  return true;
+}
+
 const impl = {
-  search_trains({ from, to, budget, cls }){
+  search_trains({ from, to, budget, cls, filters }){
     return TRAINS.filter(t => t.fromCity === from && t.toCity === to)
       .map(t => ({ kind:"train", id:t.no, title:`${t.no} ${t.name}`, sub:`${t.from} ${t.dep} -> ${t.to} ${t.arr} · ${t.dur}`,
         price: t.classes[cls] || minOf(t.classes), detail: Object.entries(t.classes).map(([k,v])=>`${k} ₹${v}`).join(" · "),
         badge: `${t.odds}% confirmation`, raw:t }))
-      .filter(o => !budget || o.price <= budget).sort((a,b) => parseInt(b.badge) - parseInt(a.badge)).slice(0,3);
+      .filter(o => (!budget || o.price <= budget) && passes(o, filters)).sort((a,b) => parseInt(b.badge) - parseInt(a.badge)).slice(0,3);
   },
-  search_flights({ from, to, budget }){
+  search_flights({ from, to, budget, filters }){
     return FLIGHTS.filter(f => f.fromCity === from && f.toCity === to)
       .map(f => ({ kind:"flight", id:f.no, title:`${f.airline} ${f.no}`, sub:`${f.from} ${f.dep} -> ${f.to} ${f.arr} · ${f.dur}${f.nonstop?" · nonstop":""}`,
         price: f.fare, detail: `Economy ₹${f.fare}`, badge: "Zero convenience fee", raw:f }))
-      .filter(o => !budget || o.price <= budget).sort((a,b) => a.price - b.price).slice(0,3);
+      .filter(o => (!budget || o.price <= budget) && passes(o, filters)).sort((a,b) => a.price - b.price).slice(0,3);
   },
-  search_buses({ from, to, budget }){
+  search_buses({ from, to, budget, filters }){
     return BUSES.filter(b => b.fromCity === from && b.toCity === to)
       .map(b => ({ kind:"bus", id:b.id, title:`${b.operator} (${b.type})`, sub:`${b.dep} -> ${b.arr} · ${b.dur}`,
         price: b.fare, detail: `₹${b.fare} · rated ${b.rating}`, badge: b.assured ? "Paytm Assured" : null, raw:b }))
-      .filter(o => !budget || o.price <= budget).sort((a,b) => a.price - b.price).slice(0,3);
+      .filter(o => (!budget || o.price <= budget) && passes(o, filters)).sort((a,b) => a.price - b.price).slice(0,3);
   },
-  search_hotels({ city, budget }){
+  search_hotels({ city, budget, filters }){
     return HOTELS.filter(h => h.city === city)
       .map(h => ({ kind:"hotel", id:h.id, title:`${h.name} (${h.stars} star)`, sub:`${h.area} · rated ${h.rating}${h.breakfast?" · breakfast":""}`,
         price: h.priceNight, detail: `₹${h.priceNight}/night`, badge: "Agoda partner inventory", raw:h }))
-      .filter(o => !budget || o.price <= budget).sort((a,b) => a.price - b.price).slice(0,3);
+      .filter(o => (!budget || o.price <= budget) && passes(o, filters)).sort((a,b) => a.price - b.price).slice(0,3);
   },
   book(option, prefs, date){
     const A = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // 31 chars: random()*32 used to index past the end, giving 5-char PNRs

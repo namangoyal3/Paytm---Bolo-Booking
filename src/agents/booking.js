@@ -15,22 +15,27 @@ const ORDER = {
 };
 export const sortOptions = (opts, sort) => ORDER[sort] ? [...opts].sort(ORDER[sort]) : opts;
 
-function run(vertical, trip, budget){
-  if (vertical === "hotel") return tools.search_hotels({ city: trip.to, budget });
-  return tools[TOOL[vertical]]({ from: trip.from, to: trip.to, budget, cls: trip.cls });
+function run(vertical, trip, budget, filters){
+  if (vertical === "hotel") return tools.search_hotels({ city: trip.to, budget, filters });
+  return tools[TOOL[vertical]]({ from: trip.from, to: trip.to, budget, cls: trip.cls, filters });
+}
+// Nothing matches: drop the filters first, then the budget. `relaxed` names what was dropped so the reply can say so.
+function relax(trip, find, found){
+  let res = find(trip.budget, trip.filters), relaxed = false;
+  if (!found(res) && trip.filters){ res = find(trip.budget, null); relaxed = found(res) && "filters"; }
+  if (!found(res) && trip.budget){ res = find(null, null); relaxed = found(res) && "budget"; }
+  return [res, relaxed];
 }
 
 export function searchTrip(trip){
-  let options = run(trip.vertical, trip, trip.budget), relaxed = false;
-  if (!options.length && trip.budget){ options = run(trip.vertical, trip, null); relaxed = options.length > 0; }
+  const [options, relaxed] = relax(trip, (b, f) => run(trip.vertical, trip, b, f), r => r.length);
   return { options: sortOptions(options, trip.sort), relaxed };
 }
 
 // No mode chosen yet ("kal mumbai jaana hai"): compare train, flight and bus in one answer instead of asking.
 export function searchAllModes(trip){
-  const byMode = budget => ["train", "flight", "bus"].map(v => ({ vertical: v, options: run(v, trip, budget) })).filter(g => g.options.length);
-  let groups = byMode(trip.budget), relaxed = false;
-  if (!groups.length && trip.budget){ groups = byMode(null); relaxed = groups.length > 0; }
+  const byMode = (budget, filters) => ["train", "flight", "bus"].map(v => ({ vertical: v, options: run(v, trip, budget, filters) })).filter(g => g.options.length);
+  const [groups, relaxed] = relax(trip, byMode, r => r.length);
   const options = sortOptions(groups.flatMap(g => sortOptions(g.options, "cheapest").slice(0, 2)), "cheapest");
   return { options, relaxed, groups: groups.map(g => ({ vertical: g.vertical, count: g.options.length, min: Math.min(...g.options.map(o => o.price)) })) };
 }
