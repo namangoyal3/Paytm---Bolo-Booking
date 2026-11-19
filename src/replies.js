@@ -75,10 +75,15 @@ export function replies(lang){
       const n = opts.length;
       const head = relaxed ? (hi ? `${rupees(s.budget)} के अंदर कुछ नहीं मिला, तो सबसे सस्ते विकल्प दिखा रहा हूँ। ` : `Nothing under ${rupees(s.budget)}, so here are the cheapest. `) : "";
       const found = s.vertical === "hotel"
-        ? (hi ? `${place(s.to)} में ${n} होटल ${n === 1 ? "मिला" : "मिले"}, ${when(s.date)} चेक-इन।` : `Found ${n} ${noun("hotel", n)} in ${place(s.to)}, check-in ${when(s.date)}.`)
+        ? (hi ? `${place(s.to)} में ${n} होटल ${n === 1 ? "मिला" : "मिले"}${s.dateSet ? `, ${when(s.date)} चेक-इन` : ""}।` : `Found ${n} ${noun("hotel", n)} in ${place(s.to)}${s.dateSet ? `, check-in ${when(s.date)}` : ""}.`)
         : (hi ? `${when(s.date)}, ${place(s.from)} से ${place(s.to)} की ${n} ${noun(s.vertical, n)} ${n === 1 ? "मिली" : "मिलीं"}।`
           : `Found ${n} ${noun(s.vertical, n)} from ${place(s.from)} to ${place(s.to)}, ${when(s.date)}.`);
-      const ask = hi ? (s.vertical === "hotel" ? "कौन सा बुक करूँ?" : "कौन सी बुक करूँ?") : "Which one should I book?";
+      // Hotels show results at once, then ask for whatever would narrow them: check-in date and budget per night.
+      const needDate = s.vertical === "hotel" && !s.dateSet, needBudget = s.vertical === "hotel" && !s.budget;
+      const ask = needDate && needBudget ? (hi ? "चेक-इन कब करना है, और एक रात का बजट कितना है?" : "When do you check in, and what is your budget per night?")
+        : needDate ? (hi ? "चेक-इन कब करना है?" : "When do you check in?")
+        : needBudget ? (hi ? "एक रात का बजट कितना है?" : "What is your budget per night?")
+        : hi ? (s.vertical === "hotel" ? "कौन सा बुक करूँ?" : "कौन सी बुक करूँ?") : "Which one should I book?";
       return `${head}${found} ${highlight(s, opts[0])} ${ask}`;
     },
     noRoute(s, alt){
@@ -130,7 +135,12 @@ export function replies(lang){
     confirmChips: () => hi ? [chip("हाँ, बुक करो", "हाँ"), chip("नहीं")] : [chip("Yes, book it", "yes"), chip("No", "no")],
     cancelChips: () => hi ? [chip("हाँ, कैंसिल करो", "हाँ"), chip("नहीं")] : [chip("Yes, cancel", "yes"), chip("No", "no")],
     dateChips: from => [1, 2, 3].map(n => addDays(from, n)).map(d => chip(relDay(d), hi ? relDay(d) : (REL.en[daysFromToday(d)] || `${+d.slice(8)} november`))),
-    resultChips(s, alt){
+    resultChips(s, alt, opts = []){
+      if (s.vertical === "hotel" && (!s.dateSet || !s.budget)){
+        const days = s.dateSet ? [] : this.dateChips(addDays(s.date, -1));
+        const caps = s.budget ? [] : [...new Set(opts.map(o => Math.ceil(o.price / 500) * 500))].sort((a, b) => a - b);
+        return [...days.map(d => chip(cap(d.label), d.text)), ...caps.map(c => chip(hi ? `${rupees(c)} तक` : `Under ${rupees(c)}`, hi ? `${c} के अंदर` : `under ${c}`))];
+      }
       const next = addDays(s.date, 1);
       const nextLabel = hi ? `${relDay(next)} का` : (daysFromToday(next) === 1 ? "Tomorrow" : `${day(next)}`);
       const nextText = hi ? relDay(next) : (REL.en[daysFromToday(next)] || `${+next.slice(8)} november`);

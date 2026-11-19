@@ -23,6 +23,7 @@ export function mergeTrip(prev, turn, prefs){
     from: turn.from || p.from || null,
     to: turn.to || p.to || null,
     date: turn.date || p.date || TODAY,
+    dateSet: !!turn.date || !!p.dateSet, // false = TODAY is only a default; hotels ask for the real check-in
     budget: turn.budget || (sameVertical ? p.budget : null) || null, // a hotel budget must not filter flights
     cls: turn.cls || p.cls || prefs.preferredClass || null,
     sort: turn.sort || (sameVertical ? p.sort : null) || null
@@ -51,7 +52,7 @@ function search(turn, session, t){
   const alt = alternatives(trip);
   session.lastOptions = options.length ? options : null;
   if (!options.length) return { agent: trip.vertical, reply: t.noRoute(trip, alt), chips: t.noRouteChips(trip, alt) };
-  return { agent: trip.vertical, reply: t.results(trip, options, relaxed), cards: options, chips: t.resultChips(trip, alt) };
+  return { agent: trip.vertical, reply: t.results(trip, options, relaxed), cards: options, chips: t.resultChips(trip, alt, options) };
 }
 
 function select(turn, session, t){
