@@ -16,3 +16,4 @@ export function recordTurn(turn){
   if (turns.length > MAX_TURNS) turns.shift();
 }
 export const activity = (since = 0) => ({ turns: turns.filter(t => t.id > since), max: MAX_TURNS });
+export function restore(saved){ if (!turns.length && saved?.length){ turns.push(...saved); seq = saved.at(-1).id; } }

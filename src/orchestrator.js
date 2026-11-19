@@ -25,6 +25,7 @@ export function mergeTrip(prev, turn, prefs){
     date: turn.date || p.date || TODAY,
     dateSet: !!turn.date || !!p.dateSet, // false = TODAY is only a default; hotels ask for the real check-in
     budget: turn.budget || (sameVertical ? p.budget : null) || null, // a hotel budget must not filter flights
+    nights: turn.nights || p.nights || null, pax: turn.pax || p.pax || null,
     cls: turn.cls || p.cls || prefs.preferredClass || null,
     sort: turn.sort || (sameVertical ? p.sort : null) || null
   };
@@ -59,7 +60,8 @@ function select(turn, session, t){
   const opts = session.lastOptions;
   const idx = turn.selection ? turn.selection - 1 : turn.sort ? opts.indexOf(sortOptions(opts, turn.sort)[0]) : -1;
   if (!opts[idx]) return { agent: session.search.vertical || "orchestrator", reply: t.whichOne(opts.length), chips: t.optionChips(opts.length) };
-  session.pending = { option: opts[idx], date: session.search.date, search: { ...session.search } };
+  const trip = session.search, times = opts[idx].kind === "hotel" ? (trip.nights || 1) : (trip.pax || 1);
+  session.pending = { option: opts[idx], date: trip.date, search: { ...trip }, total: opts[idx].price * times };
   traceStep({ type: "guard", name: "Read back, wait for an explicit yes", result: { holding: opts[idx].title } });
   return { agent: opts[idx].kind, reply: t.readBack(opts[idx], session.pending, session.prefs), chips: t.confirmChips(), selected: idx };
 }
@@ -68,8 +70,8 @@ function confirm(session, t){
   if (session.pendingCancel) return { agent: "post", ...confirmCancel(session, t) };
   if (session.pending){ // GUARDRAIL: books only after a read-back and an explicit yes
     traceStep({ type: "guard", name: "Explicit yes after the read-back", result: { booking: session.pending.option.title } });
-    const { option, date, search: trip } = session.pending;
-    const booking = { ...tools.book(option, session.prefs, date), search: trip };
+    const { option, date, search: trip, total } = session.pending;
+    const booking = { ...tools.book(option, session.prefs, date), search: trip, fare: total };
     session.bookings.push(booking);
     session.pending = null; session.lastOptions = null;
     return { agent: option.kind, reply: t.booked(booking), ticket: booking, chips: t.afterBooking(booking) };
@@ -96,7 +98,9 @@ async function handle(turn, message, session, t, lang){
     case "policy": return { agent: "policy", ...(await policyAgent(turn.query || toHinglish(message), message, lang, t)) };
     case "search": return search(turn, session, t);
     case "greet": return { agent: "orchestrator", reply: turn.say || t.greet(session.prefs.name?.split(" ")[0]), chips: t.starters() };
-    default: return { agent: "orchestrator", reply: turn.say || t.other(), chips: t.starters() };
+    default: // with options on screen, an unknown ask must not throw the trip away
+      if (session.lastOptions && !turn.say) return { agent: session.search.vertical || "orchestrator", reply: t.cantDoThat(), chips: t.optionChips(session.lastOptions.length) };
+      return { agent: "orchestrator", reply: turn.say || t.other(), chips: t.starters() };
   }
 }
 

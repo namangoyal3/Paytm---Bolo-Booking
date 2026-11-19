@@ -61,3 +61,13 @@ Live build log. Deviations, edge cases and non-obvious decisions only.
 - Admin console: tool calls report through AsyncLocalStorage (`src/activity.js`), wrapped once in `tools.js`, so concurrent requests do not mix steps. Alternative-mode searches are labelled in the UI (tool vertical differs from the agent), not in the backend.
 - The console showed that "refund policy kya hai" retrieved nothing: BM25 matched exact tokens ("refund" vs "refunds"). Added a suffix strip in `rag.js`; plural fold alone reordered the "confirm" case, so "-ed"/"-ation" are stripped too.
 - Admin guard: loopback only, or ADMIN_TOKEN compared as SHA-256 digests. The Worker returns 403 unless the secret is set.
+
+## 2026-11-19: clarify sweep and Worker session store
+
+- The Worker kept sessions in isolate memory. A follow-up turn on another isolate lost the trip (5 of 8 live runs). One Durable Object (`Store`) now holds the sessions and the activity log.
+- Hotels show results first. Then they ask for the check-in date and the nights, then the budget per night. `dateSet` on the trip tells a spoken date from the TODAY default.
+- Transport and the compare reply say "I assumed today" when the user gave no date.
+- The keyword parser now reads weekdays, "weekend", all months, nights and traveller counts. The read-back and the booking use the total price.
+- "2 nights" is a count, not option 2. The pick regex skips a message that carries a count.
+- An unknown request with options on screen keeps the trip and asks the user to pick.
+- Not done: time of day, non-stop, star rating, breakfast and bus type filters. The reply says it cannot do that yet.

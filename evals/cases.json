@@ -47,7 +47,16 @@
     {"flow":["जयपुर में होटल 2000 तक","दिल्ली से मुंबई फ्लाइट"],"vertical":"flight"}
   ],
   "conversation": [
-    {"flow":["hotels in goa"],"lang":"en","expect":{"agent":"hotel","cards":true,"chips":true,"replyHas":"When do you check in, and what is your budget per night?"}},
+    {"flow":["i want to travel to mumbai"],"lang":"en","expect":{"agent":"orchestrator","cards":true,"replyHas":"I assumed today"}},
+    {"flow":["hotels in goa","tomorrow for 2 nights","under 3500","1"],"lang":"en","expect":{"agent":"hotel","pending":true,"replyHas":"2 nights, total ₹6,400"}},
+    {"flow":["delhi to mumbai flight tomorrow for 2 people","1"],"lang":"en","expect":{"agent":"flight","pending":true,"replyHas":"2 travellers, total ₹8,700"}},
+    {"flow":["bus to jaipur next friday"],"lang":"en","expect":{"agent":"bus","cards":true,"date":"2026-11-13"}},
+    {"flow":["hotels in goa this weekend under 4000"],"lang":"en","expect":{"agent":"hotel","cards":true,"date":"2026-11-14"}},
+    {"flow":["flight to mumbai"],"lang":"en","expect":{"agent":"flight","cards":true,"replyHas":"I assumed today"}},
+    {"flow":["delhi to mumbai flight tomorrow","non stop"],"lang":"en","expect":{"agent":"flight","chips":true,"replyHas":"I can't do that yet"}},
+    {"flow":["flight to london"],"lang":"en","expect":{"agent":"flight","to":"london","replyHas":"London"}},
+    {"flow":["गोवा में होटल","शुक्रवार को 2 रात"],"expect":{"agent":"hotel","cards":true,"date":"2026-11-13","replyHas":"बजट"}},
+    {"flow":["hotels in goa"],"lang":"en","expect":{"agent":"hotel","cards":true,"chips":true,"replyHas":"When do you check in, and for how many nights?"}},
     {"flow":["hotels in goa","tomorrow"],"lang":"en","expect":{"agent":"hotel","cards":true,"date":"2026-11-12","replyHas":"What is your budget per night?"}},
     {"flow":["hotels in goa","tomorrow","under 3500"],"lang":"en","expect":{"agent":"hotel","cards":true,"replyHas":"Which one should I book?"}},
     {"flow":["गोवा में होटल","कल","3500 के अंदर"],"expect":{"agent":"hotel","cards":true,"date":"2026-11-12","replyHas":"कौन सा बुक करूँ?"}},
