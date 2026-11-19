@@ -50,7 +50,7 @@ function keywordVertical(m){
   return best;
 }
 const blank = () => ({ intent: "other", vertical: null, from: null, to: null, date: null, budget: null, cls: null,
-  sort: null, selection: null, query: null, say: null, nights: null, pax: null });
+  sort: null, selection: null, query: null, say: null, nights: null, pax: null, filters: null, clearFilters: false });
 
 export function offlineTurn(text, session){
   const m = norm(text);
@@ -61,7 +61,7 @@ export function offlineTurn(text, session){
   const sort = Object.keys(SORT_RX).find(k => SORT_RX[k].test(m)) || null;
   const vertical = keywordVertical(m);
   const s = localSlots(m, vertical === "hotel");
-  const pick = !s.nights && !s.pax && m.match(/\b(first|second|third|pehla|doosra|dusra|teesra|[123])\b/); // "2 nights" is not option 2
+  const pick = !s.nights && !s.pax && !s.filters?.stars && m.match(/\b(first|second|third|pehla|doosra|dusra|teesra|[123])\b/); // "2 nights" is not option 2
   const hasPlace = s.from || s.to || s.city;
   if (session.lastOptions && (pick || sort) && !hasPlace && !vertical)
     return { ...turn, intent: "select", selection: pick ? PICK[pick[1]] : null, sort };
@@ -75,8 +75,8 @@ export function offlineTurn(text, session){
   const city = s.city;
   if (session.asked === "to" && from && !to && !s.fromMarked){ to = from; from = null; } // answer to "kahan jaana hai?"
   if (WAPSI.test(m) && !hasPlace && session.search?.from) ({ from, to } = { from: session.search.to, to: session.search.from });
-  if (vertical || from || to || city || s.date || s.budget || sort || s.cls || s.nights || s.pax)
-    return { ...turn, intent: "search", vertical, from, to: city || to, date: s.date, budget: s.budget, cls: s.cls, sort, nights: s.nights, pax: s.pax };
+  if (vertical || from || to || city || s.date || s.budget || sort || s.cls || s.nights || s.pax || s.filters || s.clearFilters)
+    return { ...turn, intent: "search", vertical, from, to: city || to, date: s.date, budget: s.budget, cls: s.cls, sort, nights: s.nights, pax: s.pax, filters: s.filters, clearFilters: s.clearFilters };
   return turn;
 }
 
@@ -139,6 +139,6 @@ export async function understand(message, session, lang){
   const text = toHinglish(message);
   if (isSimple(norm(text), session)) return { ...offlineTurn(text, session), engine: "instant" };
   const turn = clean(await llmJson(SYSTEM, `CONTEXT: ${JSON.stringify(context(session, lang))}\nUSER: ${message}`), session);
-  const { nights, pax } = localSlots(text); // counts are not in Claude's schema; the keyword parser reads them
-  return turn ? { ...turn, nights, pax, engine: "claude" } : { ...offlineTurn(text, session), engine: "keyword" };
+  const { nights, pax, filters, clearFilters } = localSlots(text); // counts and filters are not in Claude's schema; the keyword parser reads them
+  return turn ? { ...turn, nights, pax, filters, clearFilters, engine: "claude" } : { ...offlineTurn(text, session), engine: "keyword" };
 }

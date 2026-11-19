@@ -70,4 +70,8 @@ Live build log. Deviations, edge cases and non-obvious decisions only.
 - The keyword parser now reads weekdays, "weekend", all months, nights and traveller counts. The read-back and the booking use the total price.
 - "2 nights" is a count, not option 2. The pick regex skips a message that carries a count.
 - An unknown request with options on screen keeps the trip and asks the user to pick.
-- Not done: time of day, non-stop, star rating, breakfast and bus type filters. The reply says it cannot do that yet.
+- Filters: time of day, non-stop, star rating (minimum), breakfast and bus type. `passes()` in `src/tools.js` applies each filter only to the kind it fits.
+- No match: the search drops the filters first, then the budget. The reply names what it dropped.
+- A filter stays for the same mode only. "any time" or "clear filters" removes it.
+- The trip bar shows the filters in the budget pill. No UI change.
+- "Sleeper" does not match "Semi-Sleeper".

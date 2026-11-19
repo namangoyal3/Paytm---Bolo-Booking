@@ -18,6 +18,7 @@ export function mergeTrip(prev, turn, prefs){
   const p = prev || {};
   const vertical = turn.vertical || p.vertical || null;
   const sameVertical = vertical === p.vertical;
+  const filters = turn.clearFilters ? {} : { ...(sameVertical ? p.filters : null), ...turn.filters }; // a hotel's star filter must not follow the user to flights
   return {
     vertical,
     from: turn.from || p.from || null,
@@ -25,6 +26,7 @@ export function mergeTrip(prev, turn, prefs){
     date: turn.date || p.date || TODAY,
     dateSet: !!turn.date || !!p.dateSet, // false = TODAY is only a default; hotels ask for the real check-in
     budget: turn.budget || (sameVertical ? p.budget : null) || null, // a hotel budget must not filter flights
+    filters: Object.keys(filters).length ? filters : null,
     nights: turn.nights || p.nights || null, pax: turn.pax || p.pax || null,
     cls: turn.cls || p.cls || prefs.preferredClass || null,
     sort: turn.sort || (sameVertical ? p.sort : null) || null

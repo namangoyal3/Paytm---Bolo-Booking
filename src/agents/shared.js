@@ -35,6 +35,21 @@ const WEEKDAYS = ["sunday|ravivar|itvar", "monday|somvar", "tuesday|mangalvar", 
 const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
 const MONTHS = "january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec";
 const count = (m, rx, max) => { const r = m.match(rx); return r && +r[1] >= 1 && +r[1] <= max ? +r[1] : null; };
+// Filters the user can say: time of day, non-stop, star rating, breakfast, bus type. null when the message has none.
+function filtersOf(m, hotel){
+  const f = {};
+  const time = hotel ? null : [["morning", /\b(morning|subah)\b/], ["afternoon", /\b(afternoon|dopahar)\b/], ["evening", /\b(evening|shaam|sham)\b/],
+    ["night", /(?<!\d\s?)\b(night|raat)\b/]].find(([, rx]) => rx.test(m)); // "2 raat" is a stay length, not a departure time
+  if (time) f.time = time[0];
+  if (/\b(non ?-?stop|nonstop|direct|seedhi|sidhi)\b/.test(m)) f.nonstop = true;
+  const stars = m.match(/\b([1-5])\s*-?\s*star\b/);
+  if (stars) f.stars = +stars[1];
+  if (/\b(breakfast|nashta|nashte)\b/.test(m)) f.breakfast = true;
+  const nonac = /\bnon ?-?ac\b/.test(m);
+  const bus = [nonac && "nonac", !nonac && /\bac\b/.test(m) && "ac", /\bsleeper\b/.test(m) && "sleeper", /\bseater\b/.test(m) && "seater", /\bvolvo\b/.test(m) && "volvo"].filter(Boolean);
+  if (bus.length) f.bus = bus;
+  return Object.keys(f).length ? f : null;
+}
 // null when the message names no date, so a follow-up keeps the date already chosen.
 export function resolveDate(m){
   if (/\b(parso|parson|day after)\b/.test(m)) return addDays(TODAY, 2);
@@ -79,7 +94,8 @@ export function localSlots(message, needCity){
   const b = m.match(BUDGET);
   const cls = (m.match(/\b(1a|2a|3a|sl|cc|ec)\b/) || [])[1]?.toUpperCase() || null;
   return { from: needCity ? null : from, to: needCity ? null : to, city: needCity ? (to || from) : null,
-    budget: b ? parseInt(b[1] || b[2], 10) : null, date: resolveDate(m), cls,
+    budget: b ? parseInt(b[1] || b[2], 10) : null, date: resolveDate(m), cls, filters: filtersOf(m, needCity),
+    clearFilters: /\b(any time|all options|remove filters?|clear filters?|no filters?|sab dikhao)\b/.test(m),
     nights: count(m, /\b(\d{1,2})\s*(?:nights?|raat|raatein|din|days?)\b/, 30),
     pax: count(m, /\b(\d)\s*(?:people|persons?|log|logon|travell?ers?|passengers?|guests?|adults?|tickets?|seats?|yatri)\b/, 9), fromMarked: /\b(se|from)\b/.test(m) };
 }
