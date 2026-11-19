@@ -65,8 +65,8 @@ export function replies(lang){
       const head = relaxed ? (hi ? `${rupees(s.budget)} के अंदर कुछ नहीं मिला, तो सबसे सस्ते विकल्प दिखा रहा हूँ। ` : `Nothing under ${rupees(s.budget)}, so here are the cheapest. `) : "";
       const parts = groups.map(g => hi ? `${g.count} ${noun(g.vertical, g.count)} ${rupees(g.min)} से` : `${g.count} ${noun(g.vertical, g.count)} from ${rupees(g.min)}`).join(", ");
       const r = top.raw, name = r.airline || r.operator || r.name;
-      return hi ? `${head}${when(s.date)}, ${place(s.from)} से ${place(s.to)}: ${parts}। सबसे सस्ता: ${NOUN.hi[top.kind][0]}, ${name}, ${clock(r.dep)}, ${rupees(top.price)}। कौन सा बुक करूँ?`
-        : `${head}${cap(when(s.date))}, ${place(s.from)} to ${place(s.to)}: ${parts}. Cheapest: ${top.kind}, ${name} at ${clock(r.dep)}, ${rupees(top.price)}. Which one should I book?`;
+      return hi ? `${head}${when(s.date)}, ${place(s.from)} से ${place(s.to)}: ${parts}। सबसे सस्ता: ${NOUN.hi[top.kind][0]}, ${name}, ${clock(r.dep)}, ${rupees(top.price)}। ${s.dateSet ? "कौन सा बुक करूँ?" : "मैंने आज की तारीख़ मानी है। दूसरी तारीख़ बताइए, या इनमें से एक चुनिए।"}`
+        : `${head}${cap(when(s.date))}, ${place(s.from)} to ${place(s.to)}: ${parts}. Cheapest: ${top.kind}, ${name} at ${clock(r.dep)}, ${rupees(top.price)}. ${s.dateSet ? "Which one should I book?" : "I assumed today. Tell me another date, or pick one to book."}`;
     },
     noRouteAny: s => hi ? `${place(s.from)} से ${place(s.to)} का कोई विकल्प अभी डेमो डेटा में नहीं है। ये रूट आज़माइए।`
       : `Nothing from ${place(s.from)} to ${place(s.to)} in the demo data yet. Try one of these routes.`,
@@ -80,8 +80,8 @@ export function replies(lang){
           : `Found ${n} ${noun(s.vertical, n)} from ${place(s.from)} to ${place(s.to)}, ${when(s.date)}.`);
       // Hotels show results at once, then ask for whatever would narrow them: check-in date and budget per night.
       const needDate = s.vertical === "hotel" && !s.dateSet, needBudget = s.vertical === "hotel" && !s.budget;
-      const ask = needDate && needBudget ? (hi ? "चेक-इन कब करना है, और एक रात का बजट कितना है?" : "When do you check in, and what is your budget per night?")
-        : needDate ? (hi ? "चेक-इन कब करना है?" : "When do you check in?")
+      const ask = needDate ? (s.nights ? (hi ? "चेक-इन कब करना है?" : "When do you check in?") : (hi ? "चेक-इन कब करना है, और कितनी रात रुकना है?" : "When do you check in, and for how many nights?"))
+        : !s.dateSet ? (hi ? "मैंने आज की तारीख़ मानी है। दूसरी तारीख़ बताइए, या इनमें से एक चुनिए।" : "I assumed today. Tell me another date, or pick one to book.")
         : needBudget ? (hi ? "एक रात का बजट कितना है?" : "What is your budget per night?")
         : hi ? (s.vertical === "hotel" ? "कौन सा बुक करूँ?" : "कौन सी बुक करूँ?") : "Which one should I book?";
       return `${head}${found} ${highlight(s, opts[0])} ${ask}`;
@@ -94,16 +94,20 @@ export function replies(lang){
     },
     readBack(o, p, prefs){
       const r = o.raw, w = when(p.date);
-      const tail = hi ? `यात्री: ${prefs.name}। बुक कर दूँ?` : `Traveller: ${prefs.name}. Shall I book it?`;
+      const pax = p.search.pax > 1 && o.kind !== "hotel" ? (hi ? `${p.search.pax} यात्री, कुल ${rupees(p.total)}। ` : `${p.search.pax} travellers, total ${rupees(p.total)}. `) : "";
+      const tail = pax + (hi ? `यात्री: ${prefs.name}। बुक कर दूँ?` : `Traveller: ${prefs.name}. Shall I book it?`);
+      const nights = p.search.nights || 1;
+      const stay = hi ? `${nights} रात${nights > 1 ? `, कुल ${rupees(p.total)}` : ""}` : `${nights} ${nights > 1 ? `nights, total ${rupees(p.total)}` : "night"}`;
       if (o.kind === "flight") return hi ? `${r.airline} ${r.no}, ${w} ${clock(r.dep)}, ${rupees(o.price)}, कोई कन्वीनियंस फीस नहीं। ${tail}`
         : `${r.airline} ${r.no}, ${w} at ${clock(r.dep)}, ${rupees(o.price)}, zero convenience fee. ${tail}`;
       if (o.kind === "train") return hi ? `${r.no} ${r.name}, ${w} ${clock(r.dep)}, ${p.search.cls || "3A"}, ${rupees(o.price)}। कन्फर्म सीट की संभावना ${r.odds}%। ${tail}`
         : `${r.no} ${r.name}, ${w} at ${clock(r.dep)}, ${p.search.cls || "3A"}, ${rupees(o.price)}. ${r.odds}% confirmation odds. ${tail}`;
       if (o.kind === "bus") return hi ? `${r.operator}, ${r.type}, ${w} ${clock(r.dep)}, ${rupees(o.price)}। ${tail}`
         : `${r.operator}, ${r.type}, ${w} at ${clock(r.dep)}, ${rupees(o.price)}. ${tail}`;
-      return hi ? `${r.name}, ${r.area}, ${rupees(o.price)} प्रति रात, ${w} चेक-इन। मेहमान: ${prefs.name}। बुक कर दूँ?`
-        : `${r.name}, ${r.area}, ${rupees(o.price)} a night, check-in ${w}. Guest: ${prefs.name}. Shall I book it?`;
+      return hi ? `${r.name}, ${r.area}, ${rupees(o.price)} प्रति रात, ${w} चेक-इन, ${stay}। मेहमान: ${prefs.name}। बुक कर दूँ?`
+        : `${r.name}, ${r.area}, ${rupees(o.price)} a night, check-in ${w}, ${stay}. Guest: ${prefs.name}. Shall I book it?`;
     },
+    cantDoThat: () => hi ? "यह अभी नहीं कर सकता। इनमें से एक चुनिए, या तारीख़ या बजट बदलिए।" : "I can't do that yet. Pick one of these, or change the date or budget.",
     whichOne: n => hi ? `कौन सा विकल्प? 1 से ${n} में से चुनिए।` : `Which option? Pick 1 to ${n}.`,
     pickFirst: () => hi ? "पहले कोई विकल्प चुनिए, कार्ड पर टैप कीजिए या बोलिए “पहला”।" : "Pick an option first, tap a card or say “first”.",
     nothingToConfirm: () => hi ? "अभी कन्फर्म करने को कुछ नहीं है। कहाँ जाना है?" : "There's nothing to confirm yet. Where would you like to go?",

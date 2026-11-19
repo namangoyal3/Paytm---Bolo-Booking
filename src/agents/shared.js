@@ -31,13 +31,23 @@ export function addDays(iso, n){
 }
 export const daysFromToday = iso => Math.round((new Date(iso + "T12:00:00Z") - new Date(TODAY + "T12:00:00Z")) / 864e5);
 
+const WEEKDAYS = ["sunday|ravivar|itvar", "monday|somvar", "tuesday|mangalvar", "wednesday|budhvar", "thursday|guruvar", "friday|shukravar", "saturday|shanivar|weekend"];
+const MONTH_KEYS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const MONTHS = "january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec";
+const count = (m, rx, max) => { const r = m.match(rx); return r && +r[1] >= 1 && +r[1] <= max ? +r[1] : null; };
 // null when the message names no date, so a follow-up keeps the date already chosen.
 export function resolveDate(m){
   if (/\b(parso|parson|day after)\b/.test(m)) return addDays(TODAY, 2);
   if (/\b(kal|tomorrow)\b/.test(m)) return addDays(TODAY, 1);
   if (/\b(aaj|today|tonight)\b/.test(m)) return TODAY;
-  const d = m.match(/\b(\d{1,2})\s*(?:tarikh|nov|november)\b/);
-  if (d && +d[1] >= 1 && +d[1] <= 30) return `2026-11-${d[1].padStart(2, "0")}`;
+  const wd = WEEKDAYS.findIndex(d => new RegExp(`\\b(${d})\\b`).test(m)); // "friday", "next friday", "this weekend" = the coming one
+  if (wd >= 0) return addDays(TODAY, ((wd - new Date(TODAY + "T12:00:00Z").getUTCDay() + 7) % 7) || 7);
+  const d = m.match(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s*(?:tarikh|(${MONTHS}))\\b`));
+  if (d && +d[1] >= 1 && +d[1] <= 31){
+    const mo = d[2] ? MONTH_KEYS.indexOf(d[2].slice(0, 3)) + 1 : +TODAY.slice(5, 7);
+    const iso = `${mo >= +TODAY.slice(5, 7) ? 2026 : 2027}-${String(mo).padStart(2, "0")}-${d[1].padStart(2, "0")}`;
+    return iso >= TODAY ? iso : null;
+  }
   return null;
 }
 
@@ -64,8 +74,12 @@ export function localSlots(message, needCity){
   for (const c of loose){ if (!from && c !== to) from = c; else if (!to && c !== from) to = c; }
   if (!from){ const r = m.match(/\b([a-z]{3,})\s+se\b/); if (r && !NOT_PLACE.has(r[1])) from = r[1]; }
   if (!to){ const r = m.match(/\bse\s+([a-z]{3,})\b/); if (r && !NOT_PLACE.has(r[1]) && r[1] !== from) to = r[1]; }
+  // A city outside the demo list ("flight to london") still becomes the destination, so the reply can say it is not served.
+  if (!to){ const r = m.match(/\b(?:flight|flights|train|trains|bus|buses|ticket|tickets|fly|travel|going)\s+to\s+([a-z]{3,})\b/); if (r && !NOT_PLACE.has(r[1]) && r[1] !== from) to = r[1]; }
   const b = m.match(BUDGET);
   const cls = (m.match(/\b(1a|2a|3a|sl|cc|ec)\b/) || [])[1]?.toUpperCase() || null;
   return { from: needCity ? null : from, to: needCity ? null : to, city: needCity ? (to || from) : null,
-    budget: b ? parseInt(b[1] || b[2], 10) : null, date: resolveDate(m), cls, fromMarked: /\b(se|from)\b/.test(m) };
+    budget: b ? parseInt(b[1] || b[2], 10) : null, date: resolveDate(m), cls,
+    nights: count(m, /\b(\d{1,2})\s*(?:nights?|raat|raatein|din|days?)\b/, 30),
+    pax: count(m, /\b(\d)\s*(?:people|persons?|log|logon|travell?ers?|passengers?|guests?|adults?|tickets?|seats?|yatri)\b/, 9), fromMarked: /\b(se|from)\b/.test(m) };
 }

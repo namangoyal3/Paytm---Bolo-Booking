@@ -9,3 +9,11 @@ directory = "./public"
 
 [vars]
 LLM_PROVIDER = "none"
+
+[[durable_objects.bindings]]
+name = "STORE"
+class_name = "Store"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Store"]

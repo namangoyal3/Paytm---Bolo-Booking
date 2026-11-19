@@ -18,6 +18,8 @@ const GROUPS = {
   agra: "आगरा", kochi: "कोच्चि", indore: "इंदौर", bhopal: "भोपाल", patna: "पटना", manali: "मनाली", shimla: "शिमला",
   rishikesh: "ऋषिकेश", dehradun: "देहरादून",
   se: "से", tak: "तक", andar: "अंदर", budget: "बजट", mein: "में", to: "टू", ko: "को", bhi: "भी", ka: "का", ki: "की", ke: "के",
+  friday: "शुक्रवार", saturday: "शनिवार", sunday: "रविवार इतवार", monday: "सोमवार", tuesday: "मंगलवार", wednesday: "बुधवार", thursday: "गुरुवार",
+  weekend: "वीकेंड", log: "लोग लोगों", din: "दिन दिनों", raat: "रात रातें रातों",
   aaj: "आज", kal: "कल", parso: "परसों", subah: "सुबह", shaam: "शाम", november: "नवंबर नवम्बर", tarikh: "तारीख",
   jaana: "जाना", jaane: "जाने", hai: "है", chahiye: "चाहिए", dikhao: "दिखाओ दिखाइए दिखाना दिखा", wala: "वाला वाली वाले",
   sabse: "सबसे", sasta: "सस्ता सस्ती सस्ते", jaldi: "जल्दी", wapsi: "वापसी वापस", return: "रिटर्न",
